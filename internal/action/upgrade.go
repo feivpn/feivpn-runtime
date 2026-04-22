@@ -44,6 +44,13 @@ func (r *Runner) Upgrade() (*UpgradeResult, error) {
 	if _, err := r.Locator.Locate(binmgr.ComponentFeivpn); err != nil {
 		return nil, err
 	}
+	// Router is part of the upgrade unit too: a daemon bump that
+	// expects a newer router RPC contract MUST refuse to start with a
+	// stale router. Locate verifies SHA against the (already bumped)
+	// manifest entry.
+	if _, err := r.Locator.Locate(binmgr.ComponentFeivpnRouter); err != nil {
+		return nil, err
+	}
 
 	if _, err := r.Stop(); err != nil {
 		logging.Warn("upgrade: stop reported errors", "err", err)

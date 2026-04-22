@@ -1,14 +1,37 @@
-// feivpnctl — bootstrap CLI for the FeiVPN daemon.
+// feivpnctl — bootstrap + ops CLI for the FeiVPN daemon.
 //
-// Five top-level subcommands, each prints a single-line JSON document
-// to stdout (consumed by Cursor / Claude skills) plus a human summary
-// to stderr.
+// Command surface (all subcommands print a single-line JSON document to
+// stdout, consumed by Cursor / Claude skills, plus a human summary to
+// stderr):
 //
-//	feivpnctl ensure-ready   — install + configure + start + verify
-//	feivpnctl status         — read-only health and state inspection
-//	feivpnctl stop           — stop daemon, restore network
-//	feivpnctl restart        — stop → ensure-ready
-//	feivpnctl upgrade        — re-verify pinned binary, restart daemon
+// Account
+//
+//	feivpnctl getid           Anonymous device bootstrap (auto-run on first use)
+//	feivpnctl register        Bind device to a new email; persists token
+//	feivpnctl login           Email + password login; persists token
+//	feivpnctl logout          Drop named-account session back to anonymous
+//	feivpnctl whoami          Prints email / expiry / balance (refreshes from server)
+//	feivpnctl change-password Rotate account password
+//
+// Billing
+//
+//	feivpnctl plans           Lists available plans
+//	feivpnctl recharge        Opens recharge URL with token, or prints it
+//
+// Connection
+//
+//	feivpnctl ensure-ready    Install + configure + start + verify
+//	feivpnctl connect         Alias for ensure-ready
+//	feivpnctl disconnect      Alias for stop
+//	feivpnctl stop            Stop daemon, restore network
+//	feivpnctl restart         Stop → ensure-ready
+//	feivpnctl upgrade         Re-verify pinned binary, restart daemon
+//	feivpnctl check-upgrade   Compare local pin with /version/check (read-only)
+//	feivpnctl status          Read-only health and state inspection
+//
+// Diagnostics
+//
+//	feivpnctl test            Egress IP, latency, DNS, reachability
 //
 // All actions live in internal/action; this file is just argument
 // plumbing.
@@ -16,11 +39,15 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/feivpn/feivpn-runtime/internal/action"
 	"github.com/feivpn/feivpn-runtime/internal/config"
@@ -35,7 +62,7 @@ type globalFlags struct {
 	configPath   string
 	manifestPath string
 	logLevel     string
-	jsonOnly     bool // suppress human-readable summary on stderr
+	jsonOnly     bool
 }
 
 var gf globalFlags
@@ -43,8 +70,8 @@ var gf globalFlags
 func main() {
 	root := &cobra.Command{
 		Use:           "feivpnctl",
-		Short:         "FeiVPN bootstrap CLI",
-		Long:          "feivpnctl installs, configures, supervises, and upgrades the FeiVPN daemon on the current host.",
+		Short:         "FeiVPN bootstrap + ops CLI",
+		Long:          "feivpnctl installs, configures, supervises, upgrades, and authenticates against the FeiVPN backend on the current host.",
 		Version:       version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -56,11 +83,27 @@ func main() {
 	root.PersistentFlags().BoolVar(&gf.jsonOnly, "json", false, "only print machine-readable JSON to stdout")
 
 	root.AddCommand(
+		// Connection
 		newEnsureReadyCmd(),
+		newConnectCmd(),
+		newDisconnectCmd(),
 		newStatusCmd(),
 		newStopCmd(),
 		newRestartCmd(),
 		newUpgradeCmd(),
+		newCheckUpgradeCmd(),
+		// Account
+		newGetidCmd(),
+		newRegisterCmd(),
+		newLoginCmd(),
+		newLogoutCmd(),
+		newWhoamiCmd(),
+		newChangePasswordCmd(),
+		// Billing
+		newPlansCmd(),
+		newRechargeCmd(),
+		// Diagnostics
+		newTestCmd(),
 	)
 
 	if err := root.Execute(); err != nil {
@@ -69,7 +112,7 @@ func main() {
 	}
 }
 
-// ----- subcommands -----
+// ----- Connection subcommands -----
 
 func newEnsureReadyCmd() *cobra.Command {
 	var (
@@ -90,9 +133,23 @@ func newEnsureReadyCmd() *cobra.Command {
 			return err
 		},
 	}
-	cmd.Flags().StringVar(&token, "token", "", "subscription token (overrides profile)")
+	cmd.Flags().StringVar(&token, "token", "", "subscription URL (overrides profile + local store)")
 	cmd.Flags().StringVar(&preferredNode, "node", "", "preferred subscription-node name substring")
 	cmd.Flags().StringVar(&mode, "mode", "", "routing mode (default: global)")
+	return cmd
+}
+
+func newConnectCmd() *cobra.Command {
+	cmd := newEnsureReadyCmd()
+	cmd.Use = "connect"
+	cmd.Short = "Alias for ensure-ready"
+	return cmd
+}
+
+func newDisconnectCmd() *cobra.Command {
+	cmd := newStopCmd()
+	cmd.Use = "disconnect"
+	cmd.Short = "Alias for stop"
 	return cmd
 }
 
@@ -160,7 +217,222 @@ func newUpgradeCmd() *cobra.Command {
 	}
 }
 
-// ----- helpers -----
+func newCheckUpgradeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "check-upgrade",
+		Short: "Compare the bundled daemon version with /version/check (no side-effects)",
+		Long: "check-upgrade auto-detects the host OS / arch (Linux x86_64 or ARM64,\n" +
+			"macOS Apple Silicon or Intel) and queries the FeiVPN backend for the\n" +
+			"latest released daemon version.\n\n" +
+			"It writes JSON to stdout and never installs, downloads, or restarts\n" +
+			"anything. To act on a positive result, run `feivpnctl upgrade` (end\n" +
+			"user) or `make sync-bins && git commit` (maintainer).",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := buildRunner("", "", "")
+			if err != nil {
+				return err
+			}
+			result, err := r.CheckUpgrade()
+			emit("check-upgrade", result)
+			return err
+		},
+	}
+}
+
+// ----- Account subcommands -----
+
+func newRegisterCmd() *cobra.Command {
+	var email, password, passwordFile string
+	cmd := &cobra.Command{
+		Use:   "register",
+		Short: "Bind device to a new email account; persists token",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pw, err := resolvePassword(password, passwordFile, "Choose password: ")
+			if err != nil {
+				return err
+			}
+			r, err := buildRunner("", "", "")
+			if err != nil {
+				return err
+			}
+			result, err := r.Register(email, pw)
+			emit("register", result)
+			return err
+		},
+	}
+	cmd.Flags().StringVar(&email, "email", "", "Account email (required)")
+	cmd.Flags().StringVar(&password, "password", "", "Account password (will prompt if empty)")
+	cmd.Flags().StringVar(&passwordFile, "password-file", "", "Read password from file instead of prompting")
+	_ = cmd.MarkFlagRequired("email")
+	return cmd
+}
+
+func newLoginCmd() *cobra.Command {
+	var email, password, passwordFile string
+	cmd := &cobra.Command{
+		Use:   "login",
+		Short: "Email + password login; persists token",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pw, err := resolvePassword(password, passwordFile, "Password: ")
+			if err != nil {
+				return err
+			}
+			r, err := buildRunner("", "", "")
+			if err != nil {
+				return err
+			}
+			result, err := r.Login(email, pw)
+			emit("login", result)
+			return err
+		},
+	}
+	cmd.Flags().StringVar(&email, "email", "", "Account email (required)")
+	cmd.Flags().StringVar(&password, "password", "", "Account password (will prompt if empty)")
+	cmd.Flags().StringVar(&passwordFile, "password-file", "", "Read password from file instead of prompting")
+	_ = cmd.MarkFlagRequired("email")
+	return cmd
+}
+
+func newLogoutCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "logout",
+		Short: "Drop the named-account session back to anonymous (re-runs getid)",
+		Long: "logout does NOT delete account.json. It calls /getid again with the\n" +
+			"current device id, which replaces the named-account fields\n" +
+			"(auth_data, user_email) with the anonymous baseline. The same uuid\n" +
+			"and a fresh subscribe_url remain available for trial usage.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := buildRunner("", "", "")
+			if err != nil {
+				return err
+			}
+			result, err := r.Logout()
+			emit("logout", result)
+			return err
+		},
+	}
+}
+
+func newGetidCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "getid",
+		Short: "Anonymous device bootstrap (refreshes uuid + subscribe_url)",
+		Long: "getid signs the host's persistent device identity (machine-id on\n" +
+			"Linux, IOPlatformUUID on macOS) and exchanges it with the backend\n" +
+			"for an anonymous user record (uuid + token + subscribe_url).\n" +
+			"Safe to re-run; the server returns the same uuid for the same\n" +
+			"device. Other commands invoke this automatically when account.json\n" +
+			"does not yet exist.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := buildRunner("", "", "")
+			if err != nil {
+				return err
+			}
+			result, err := r.Getid()
+			emit("getid", result)
+			return err
+		},
+	}
+}
+
+func newWhoamiCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "whoami",
+		Short: "Show current account (refreshes from /user/info or /getid)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := buildRunner("", "", "")
+			if err != nil {
+				return err
+			}
+			result, err := r.Whoami()
+			emit("whoami", result)
+			return err
+		},
+	}
+}
+
+func newChangePasswordCmd() *cobra.Command {
+	var newPassword, passwordFile string
+	cmd := &cobra.Command{
+		Use:   "change-password",
+		Short: "Rotate the account password (requires existing login)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pw, err := resolvePassword(newPassword, passwordFile, "New password: ")
+			if err != nil {
+				return err
+			}
+			r, err := buildRunner("", "", "")
+			if err != nil {
+				return err
+			}
+			result, err := r.ChangePassword(pw)
+			emit("change_password", result)
+			return err
+		},
+	}
+	cmd.Flags().StringVar(&newPassword, "new-password", "", "New password (will prompt if empty)")
+	cmd.Flags().StringVar(&passwordFile, "password-file", "", "Read new password from file instead of prompting")
+	return cmd
+}
+
+// ----- Billing subcommands -----
+
+func newPlansCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "plans",
+		Short: "List subscription plans (uses cached token if logged in)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := buildRunner("", "", "")
+			if err != nil {
+				return err
+			}
+			result, err := r.Plans()
+			emit("plans", result)
+			return err
+		},
+	}
+}
+
+func newRechargeCmd() *cobra.Command {
+	var planID string
+	var noBrowser bool
+	cmd := &cobra.Command{
+		Use:   "recharge",
+		Short: "Open the recharge URL with your token (web payment)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := buildRunner("", "", "")
+			if err != nil {
+				return err
+			}
+			result, err := r.Recharge(action.RechargeOptions{PlanID: planID, NoBrowser: noBrowser})
+			emit("recharge", result)
+			return err
+		},
+	}
+	cmd.Flags().StringVar(&planID, "plan", "", "Plan ID to pre-select on the recharge page")
+	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "Print the URL without spawning a browser")
+	return cmd
+}
+
+// ----- Diagnostics subcommands -----
+
+func newTestCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "test",
+		Short: "Egress IP, latency, DNS, and reachability checks",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := buildRunner("", "", "")
+			if err != nil {
+				return err
+			}
+			result, err := r.Test()
+			emit("test", result)
+			return err
+		},
+	}
+}
+
+// ----- shared helpers -----
 
 func buildRunner(token, preferredNode, mode string) (*action.Runner, error) {
 	switch gf.logLevel {
@@ -188,6 +460,37 @@ func buildRunner(token, preferredNode, mode string) (*action.Runner, error) {
 		prof.Mode = mode
 	}
 	return action.NewRunner(prof, gf.manifestPath)
+}
+
+// resolvePassword fetches a password either from the explicit flag, a
+// file, or an interactive prompt (via golang.org/x/term so input does
+// not echo). When stdin is not a TTY and neither --password nor
+// --password-file is given we return an actionable error rather than
+// hanging.
+func resolvePassword(flag, file, prompt string) (string, error) {
+	if flag != "" {
+		return flag, nil
+	}
+	if file != "" {
+		raw, err := os.ReadFile(file)
+		if err != nil {
+			return "", fmt.Errorf("PASSWORD_FILE_UNREADABLE: %w", err)
+		}
+		return strings.TrimRight(strings.TrimRight(string(raw), "\n"), "\r"), nil
+	}
+	if !term.IsTerminal(int(syscall.Stdin)) {
+		return "", errors.New("INVALID_ARGUMENT: stdin is not a TTY; pass --password or --password-file")
+	}
+	fmt.Fprint(os.Stderr, prompt)
+	pw, err := term.ReadPassword(int(syscall.Stdin))
+	fmt.Fprintln(os.Stderr)
+	if err != nil {
+		return "", fmt.Errorf("PASSWORD_READ_FAILED: %w", err)
+	}
+	if len(pw) == 0 {
+		return "", errors.New("INVALID_ARGUMENT: empty password")
+	}
+	return string(pw), nil
 }
 
 // emit prints the result JSON to stdout. If jsonOnly is false a one-line
@@ -219,22 +522,43 @@ func emitError(err error) {
 	}
 }
 
-func summarize(action string, raw []byte) string {
+func summarize(act string, raw []byte) string {
 	var m map[string]any
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return string(raw)
 	}
-	if s, ok := m["status"].(string); ok {
-		return action + " → " + s
-	}
-	if s, ok := m["running"].(bool); ok {
-		if s {
-			return "daemon is running"
+	headline := act + " complete"
+	switch {
+	case m["status"] != nil:
+		if s, ok := m["status"].(string); ok {
+			headline = act + " → " + s
 		}
-		return "daemon is not running"
+	case m["running"] != nil:
+		if s, _ := m["running"].(bool); s {
+			headline = "daemon is running"
+		} else {
+			headline = "daemon is not running"
+		}
+	case m["stopped"] != nil:
+		if s, _ := m["stopped"].(bool); s {
+			headline = "daemon stopped"
+		}
 	}
-	if s, ok := m["stopped"].(bool); ok && s {
-		return "daemon stopped"
+	if notice, ok := m["notice"].(string); ok && notice != "" {
+		headline += "\n  notice: " + notice
 	}
-	return action + " complete"
+	if needs, ok := m["needs_upgrade"].(bool); ok {
+		cur, _ := m["current_version"].(string)
+		rem, _ := m["remote_version"].(string)
+		hostLbl, _ := m["host"].(string)
+		if needs {
+			headline += fmt.Sprintf("\n  upgrade: %s → %s available for %s", cur, rem, hostLbl)
+		} else if rem != "" {
+			headline += fmt.Sprintf("\n  up to date (%s) for %s", cur, hostLbl)
+		}
+		if instr, ok := m["instruction"].(string); ok && instr != "" && needs {
+			headline += "\n  instruction: " + instr
+		}
+	}
+	return headline
 }

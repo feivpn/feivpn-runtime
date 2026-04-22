@@ -14,10 +14,16 @@ func (r *Runner) Status() (*StatusResult, error) {
 		Service: ServiceState{
 			Manager: r.Platform.Name(),
 		},
+		Router: ServiceState{
+			Manager: r.Platform.Name(),
+		},
 	}
 
 	active, _ := r.Platform.IsActive()
 	res.Service.Active = active
+
+	routerActive, _ := r.Platform.IsRouterActive()
+	res.Router.Active = routerActive
 
 	if st, err := r.readState(); err == nil {
 		res.State = st

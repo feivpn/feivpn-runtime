@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/feivpn/feivpn-runtime/internal/binmgr"
+	"github.com/feivpn/feivpn-runtime/internal/feiapi"
 	"github.com/feivpn/feivpn-runtime/internal/logging"
 	"github.com/feivpn/feivpn-runtime/internal/platform"
 	"github.com/feivpn/feivpn-runtime/internal/state"
+	"github.com/feivpn/feivpn-runtime/internal/store"
 )
 
 // EnsureReady is the main bootstrap entry point.
@@ -34,7 +36,13 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 		Platform: plat,
 	}
 
-	// Step 1+2: verify manifest + locate binary (also performs SHA check).
+	// Step 1+2: verify manifest + locate both binaries (also performs SHA check).
+	// Router is verified first because the daemon will refuse to come
+	// up cleanly if the router socket is not reachable.
+	routerBin, err := r.Router.BinaryPath()
+	if err != nil {
+		return appendErr(res, err)
+	}
 	if _, err := r.Daemon.BinaryPath(); err != nil {
 		return appendErr(res, err)
 	}
@@ -50,7 +58,23 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 		return appendErr(res, err)
 	}
 
-	// Step 5: install + start service
+	// Step 5a: install + start the privileged router FIRST so its
+	// socket exists by the time the daemon tries to dial it.
+	routerOpts := platform.RouterInstallOptions{
+		BinPath:    routerBin,
+		WorkingDir: r.Paths.WorkingDir,
+		LogFile:    r.Paths.RouterLogFile,
+	}
+	if err := r.Platform.InstallRouterService(routerOpts); err != nil {
+		return appendErr(res, fmt.Errorf("ROUTER_INSTALL_FAILED: %w", err))
+	}
+	if err := r.Platform.EnableAndStartRouter(); err != nil {
+		return appendErr(res, fmt.Errorf("ROUTER_START_FAILED: %w", err))
+	}
+
+	// Step 5b: install + start the user-level daemon. The systemd unit
+	// declares Requires=feivpn-router.service so a reboot replays this
+	// ordering even when feivpnctl is not in the loop.
 	binPath, _ := r.Daemon.BinaryPath()
 	installOpts := platform.InstallOptions{
 		BinPath:    binPath,
@@ -99,16 +123,31 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 // renderDaemonConfig fetches the subscription via feiapi and writes a
 // daemon config.json that satisfies the daemon-args.schema.json contract.
 //
+// Refresh policy: if the profile does not pin a subscription URL we
+// always go through the local account store, refreshing it from the
+// server first so a stale subscribe_url never blocks ensure-ready. The
+// account is auto-bootstrapped via /getid on first run.
+//
 // In the MVP we generate a minimal Outline-compatible config block with
-// the selected SubscriptionNode. Future versions will support
-// rule-based / split-tunnel configs.
+// the selected SubscriptionNode.
 func (r *Runner) renderDaemonConfig() (string, error) {
-	if r.Profile.SubscriptionToken == "" {
-		return "", fmt.Errorf("CONFIG_INCOMPLETE: profile.subscription_token is empty")
+	subscribeURL := r.Profile.SubscriptionToken
+	if subscribeURL != "" {
+		logging.Info("ensure_ready: using subscribe_url from --token / profile override")
+	} else {
+		acc, err := r.refreshAccountForEnsureReady()
+		if err != nil {
+			return "", err
+		}
+		subscribeURL = acc.SubscribeURL
+		if subscribeURL == "" {
+			return "", fmt.Errorf("CONFIG_INCOMPLETE: server returned no subscribe_url — try `feivpnctl whoami` or pass --token <subscribe_url>")
+		}
+		logging.Info("ensure_ready: using subscribe_url from store", "uuid", acc.UUID, "logged_in", acc.IsLoggedIn())
 	}
 
 	tz, _ := time.Now().Zone()
-	nodes, err := r.Feiapi.GetConfig(r.Profile.SubscriptionToken, tz)
+	nodes, err := r.Feiapi.GetConfig(subscribeURL, tz)
 	if err != nil {
 		return "", fmt.Errorf("SUBSCRIPTION_FETCH_FAILED: %w", err)
 	}
@@ -206,4 +245,38 @@ func defaultTunName() string {
 // readState is a small helper used by other actions in this package.
 func (r *Runner) readState() (*state.State, error) {
 	return state.Read(r.Paths.StateFile)
+}
+
+// refreshAccountForEnsureReady loads (auto-bootstrapping if needed) the
+// local account, then asks the server for the latest subscribe_url.
+// Returns the (possibly updated) account; persistence is best-effort.
+func (r *Runner) refreshAccountForEnsureReady() (*store.Account, error) {
+	acc, err := r.loadOrBootstrap()
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := deviceID()
+	if err != nil {
+		// Without a device id we can't refresh, but we may still have
+		// a usable cached subscribe_url.
+		logging.Warn("ensure_ready: device id unavailable; using cached subscribe_url", "err", err)
+		return acc, nil
+	}
+
+	var fresh *feiapi.UserData
+	if acc.IsLoggedIn() {
+		fresh, err = r.Feiapi.GetInfo(id, acc.AuthData)
+	} else {
+		fresh, err = r.Feiapi.GetID(id, "")
+	}
+	if err != nil {
+		logging.Warn("ensure_ready: identity refresh failed; using cached subscribe_url", "err", err)
+		return acc, nil
+	}
+	applyUserData(acc, fresh)
+	if persistErr := store.Save(acc); persistErr != nil {
+		logging.Warn("ensure_ready: persist refreshed account failed", "err", persistErr)
+	}
+	return acc, nil
 }

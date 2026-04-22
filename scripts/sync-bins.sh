@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Maintainer command: pulls feivpn + feiapi binaries from the upstream
-# feivpn/feivpn-apps GitHub Releases according to manifest/binaries.manifest.json
-# and lays them out under bin/. Verifies SHA256 along the way.
+# Maintainer command: pulls feivpn + feiapi + feivpn-router binaries
+# from the upstream feivpn/feivpn-apps GitHub Releases according to
+# manifest/binaries.manifest.json and lays them out under bin/.
+# Verifies SHA256 along the way.
 #
 # Usage:
 #   ./scripts/sync-bins.sh           # respect current manifest
@@ -20,13 +21,25 @@ fi
 
 mkdir -p "$BIN_DIR"
 
+# Manifest jq key → binary basename. They differ for feivpn_router
+# because JSON keys can't contain dashes neatly (we use snake_case) but
+# the on-disk binary uses kebab-case to match the upstream artifact name.
+manifest_key_for() {
+  case "$1" in
+    feivpn-router) echo "feivpn_router" ;;
+    *) echo "$1" ;;
+  esac
+}
+
 download_one() {
-  local component="$1"   # feivpn | feiapi
-  local platform="$2"    # linux-amd64, linux-arm64, darwin-arm64
+  local component="$1"   # feivpn | feiapi | feivpn-router
+  local platform="$2"    # linux-amd64, linux-arm64, darwin-arm64, darwin-amd64
+  local manifest_key
+  manifest_key=$(manifest_key_for "$component")
   local path sha url
-  path=$(jq -r ".\"$component\".binaries.\"$platform\".path" "$MANIFEST")
-  sha=$(jq -r ".\"$component\".binaries.\"$platform\".sha256" "$MANIFEST")
-  url=$(jq -r ".\"$component\".binaries.\"$platform\".url" "$MANIFEST")
+  path=$(jq -r ".\"$manifest_key\".binaries.\"$platform\".path" "$MANIFEST")
+  sha=$(jq -r ".\"$manifest_key\".binaries.\"$platform\".sha256" "$MANIFEST")
+  url=$(jq -r ".\"$manifest_key\".binaries.\"$platform\".url" "$MANIFEST")
 
   if [[ "$path" == "null" || "$sha" == "null" || "$url" == "null" ]]; then
     echo "skip: $component/$platform not in manifest"
@@ -53,6 +66,7 @@ download_one() {
   curl -fsSL "$url" -o "$tmp/dl.tar.gz"
   tar -xzf "$tmp/dl.tar.gz" -C "$tmp"
   local extracted
+  # Match either the bare component name or component-<platform>...
   extracted=$(find "$tmp" -type f \( -name "$component" -o -name "$component-*" \) | head -n1)
   if [[ -z "$extracted" ]]; then
     echo "ERROR: could not locate $component binary inside $url" >&2
@@ -71,8 +85,15 @@ download_one() {
   echo "ok:  $component/$platform → $local_path ($sha)"
 }
 
-for component in feivpn feiapi; do
-  for platform in linux-amd64 linux-arm64 darwin-arm64; do
+# Order matters only for log readability: router first since it's the
+# privilege boundary the daemon depends on at install time.
+#
+# NOTE: feivpn_router on darwin-arm64 and darwin-amd64 share the same
+# Universal Binary path on disk. The second iteration is a SHA re-check
+# (not a re-download — local file already matches) and is intentional
+# to keep the loop uniform.
+for component in feivpn-router feivpn feiapi; do
+  for platform in linux-amd64 linux-arm64 darwin-arm64 darwin-amd64; do
     download_one "$component" "$platform"
   done
 done

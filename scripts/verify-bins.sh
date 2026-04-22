@@ -54,8 +54,12 @@ verify_one() {
   echo "ok:    $path  $sha"
 }
 
-for component in feivpn feiapi; do
-  for platform in linux-amd64 linux-arm64 darwin-arm64; do
+# NOTE: feivpn_router on darwin-arm64 and darwin-amd64 share the same
+# Universal Binary on disk, so verify_one is called twice and re-hashes
+# the same file. That's intentional and cheap — both manifest entries
+# must agree on the SHA, otherwise the file's been tampered with.
+for component in feivpn feiapi feivpn_router; do
+  for platform in linux-amd64 linux-arm64 darwin-arm64 darwin-amd64; do
     verify_one "$component" "$platform"
   done
 done

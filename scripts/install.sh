@@ -94,14 +94,22 @@ cp -R "$WORK/pkg/templates/."  "$PREFIX/templates/"
 cp    "$WORK/pkg/manifest.json" "$PREFIX/manifest.json"
 chmod 0755 "$PREFIX/bin/"*
 
-# Make linux/darwin daemon binary discoverable as a stable name too.
+# Make linux/darwin binaries discoverable under stable names too.
+# NOTE: feivpn-router on macOS ships as a single Universal Binary
+# (feivpn-router-darwin-universal) — both arm64 and amd64 hosts symlink
+# to it. The Go binaries (feivpn / feiapi) are still per-arch.
 case "$PLAT" in
-  linux-amd64|linux-arm64|darwin-arm64)
+  linux-amd64|linux-arm64|darwin-arm64|darwin-amd64)
     if [[ -f "$PREFIX/bin/feivpn-$PLAT" ]]; then
       ln -sf "feivpn-$PLAT" "$PREFIX/bin/feivpn"
     fi
     if [[ -f "$PREFIX/bin/feiapi-$PLAT" ]]; then
       ln -sf "feiapi-$PLAT" "$PREFIX/bin/feiapi"
+    fi
+    if [[ -f "$PREFIX/bin/feivpn-router-$PLAT" ]]; then
+      ln -sf "feivpn-router-$PLAT" "$PREFIX/bin/feivpn-router"
+    elif [[ "$OS" == "darwin" && -f "$PREFIX/bin/feivpn-router-darwin-universal" ]]; then
+      ln -sf "feivpn-router-darwin-universal" "$PREFIX/bin/feivpn-router"
     fi
     ;;
 esac

@@ -33,6 +33,11 @@
         "path":   "bin/feivpn-darwin-arm64",
         "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
         "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.0.0-PLACEHOLDER/feivpn-darwin-arm64.tar.gz"
+      },
+      "darwin-amd64": {
+        "path":   "bin/feivpn-darwin-amd64",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.0.0-PLACEHOLDER/feivpn-darwin-amd64.tar.gz"
       }
     }
   },
@@ -56,6 +61,53 @@
         "path":   "bin/feiapi-darwin-arm64",
         "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
         "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.0.0-PLACEHOLDER/feiapi-darwin-arm64.tar.gz"
+      },
+      "darwin-amd64": {
+        "path":   "bin/feiapi-darwin-amd64",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.0.0-PLACEHOLDER/feiapi-darwin-amd64.tar.gz"
+      }
+    }
+  },
+  "feivpn_router": {
+    "$comment": [
+      "Privileged C++ daemon that owns route + DNS mutations. Source:",
+      "feivpn-apps/client/electron/{linux,macos}_proxy_controller. The Go",
+      "daemon (feivpn) talks to it over a local socket:",
+      "  Linux  → unix:/var/run/feivpn_controller",
+      "  macOS  → tcp:127.0.0.1:38964",
+      "Lifecycle is managed by feivpnctl as a separate systemd unit /",
+      "LaunchDaemon; feivpn.service Wants/After feivpn-router.service.",
+      "",
+      "macOS shipping model mirrors the upstream Electron client: a single",
+      "Universal Binary (lipo arm64 + x86_64). Both darwin-arm64 and",
+      "darwin-amd64 keys point at bin/feivpn-router-darwin-universal — the",
+      "SHA must match because it's the same file on disk."
+    ],
+    "upstream": "feivpn/feivpn-apps",
+    "tag":      "router-v0.0.0-PLACEHOLDER",
+    "version":  "0.0.0-PLACEHOLDER",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.0.0-PLACEHOLDER",
+    "binaries": {
+      "linux-amd64": {
+        "path":   "bin/feivpn-router-linux-amd64",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.0.0-PLACEHOLDER/feivpn-router-linux-amd64.tar.gz"
+      },
+      "linux-arm64": {
+        "path":   "bin/feivpn-router-linux-arm64",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.0.0-PLACEHOLDER/feivpn-router-linux-arm64.tar.gz"
+      },
+      "darwin-arm64": {
+        "path":   "bin/feivpn-router-darwin-universal",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.0.0-PLACEHOLDER/feivpn-router-darwin-universal.tar.gz"
+      },
+      "darwin-amd64": {
+        "path":   "bin/feivpn-router-darwin-universal",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.0.0-PLACEHOLDER/feivpn-router-darwin-universal.tar.gz"
       }
     }
   }

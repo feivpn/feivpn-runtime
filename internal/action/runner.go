@@ -6,6 +6,7 @@ import (
 	"github.com/feivpn/feivpn-runtime/internal/daemon"
 	"github.com/feivpn/feivpn-runtime/internal/feiapi"
 	"github.com/feivpn/feivpn-runtime/internal/platform"
+	"github.com/feivpn/feivpn-runtime/internal/router"
 )
 
 // NewRunner wires up all collaborators using sensible defaults.
@@ -22,6 +23,7 @@ func NewRunner(profile *config.Profile, manifestPath string) (*Runner, error) {
 	return &Runner{
 		Locator:  loc,
 		Daemon:   daemon.New(loc),
+		Router:   router.New(loc),
 		Feiapi:   feiapi.New(loc),
 		Platform: plat,
 		Profile:  profile,

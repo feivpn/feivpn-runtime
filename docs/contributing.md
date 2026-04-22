@@ -17,7 +17,7 @@ parse a Shadowsocks frame, you're in the wrong repo.
 1. Fork + branch from `main`.
 2. `make build && make test && make verify-bins` must all pass locally.
 3. Open a PR. CI runs `go vet`, `go test ./...`, and `make verify-bins`
-   on linux-amd64, linux-arm64, and darwin-arm64.
+   on linux-amd64, linux-arm64, darwin-arm64, and darwin-amd64.
 4. Squash-merge. We sign commits with `git commit -s` (DCO).
 
 ## Bumping pinned binaries

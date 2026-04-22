@@ -35,8 +35,9 @@ import (
 type Component string
 
 const (
-	ComponentFeivpn Component = "feivpn"
-	ComponentFeiapi Component = "feiapi"
+	ComponentFeivpn       Component = "feivpn"
+	ComponentFeiapi       Component = "feiapi"
+	ComponentFeivpnRouter Component = "feivpn-router"
 )
 
 // Locator finds and verifies pinned binaries.
@@ -60,8 +61,9 @@ func New(manifestPath string) *Locator {
 // Manifest mirrors the on-disk schema. Only the fields binmgr needs are
 // modelled here; unknown fields are ignored.
 type Manifest struct {
-	Feivpn ComponentEntry `json:"feivpn"`
-	Feiapi ComponentEntry `json:"feiapi"`
+	Feivpn       ComponentEntry `json:"feivpn"`
+	Feiapi       ComponentEntry `json:"feiapi"`
+	FeivpnRouter ComponentEntry `json:"feivpn_router"`
 }
 
 type ComponentEntry struct {
@@ -108,9 +110,16 @@ func (l *Locator) Locate(c Component) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	entry := m.Feivpn
-	if c == ComponentFeiapi {
+	var entry ComponentEntry
+	switch c {
+	case ComponentFeivpn:
+		entry = m.Feivpn
+	case ComponentFeiapi:
 		entry = m.Feiapi
+	case ComponentFeivpnRouter:
+		entry = m.FeivpnRouter
+	default:
+		return "", fmt.Errorf("UNSUPPORTED_PLATFORM: unknown component %q", c)
 	}
 	bin, ok := entry.Binaries[PlatformKey()]
 	if !ok {
