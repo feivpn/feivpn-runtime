@@ -1,0 +1,11 @@
+{
+  "$comment": [
+    "Example payload an AI agent (Cursor / Claude skill) hands to feivpnctl.",
+    "Maps onto: feivpnctl ensure-ready --mode global --token <...> --node Tokyo"
+  ],
+  "action": "ensure_feivpn_ready",
+  "channel": "stable",
+  "profile": "global",
+  "subscription_token": "tok_xxxx",
+  "preferred_node": "Tokyo"
+}

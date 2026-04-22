@@ -1,0 +1,15 @@
+{
+  "$comment": "Example single-line JSON document that feivpnctl prints to stdout after a successful ensure-ready.",
+  "status": "ready",
+  "platform": "darwin-arm64",
+  "version": "1.0.0",
+  "pid": 48321,
+  "tun": "utun7",
+  "checks": {
+    "process": true,
+    "tun": true,
+    "route": true,
+    "dns": true,
+    "connectivity": true
+  }
+}

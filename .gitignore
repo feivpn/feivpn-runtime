@@ -1,0 +1,21 @@
+# Build output
+/dist/
+/build/
+
+# Go
+*.test
+*.out
+coverage.*
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Local debug logs
+*.log
+
+# IMPORTANT: bin/ is checked in. Do NOT add bin/ here.
+# The pinned `feivpn` and `feiapi` binaries live in bin/ and are
+# tracked by manifest/binaries.manifest.json.

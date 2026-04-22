@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: build + vet + test (${{ matrix.os }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux-amd64
+            runner: ubuntu-latest
+            cross: ""
+          - os: linux-arm64
+            runner: ubuntu-latest
+            cross: "GOOS=linux GOARCH=arm64"
+          - os: darwin-arm64
+            runner: macos-14
+            cross: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+      - name: go vet
+        run: ${{ matrix.cross }} go vet ./...
+      - name: go build
+        run: ${{ matrix.cross }} go build ./...
+      - name: go test
+        if: matrix.cross == ''
+        run: go test ./...
+
+  verify-bins:
+    name: pinned binaries match manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: verify
+        run: ./scripts/verify-bins.sh
+
+  schema-syntax:
+    name: schema files parse cleanly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: jq syntax check
+        run: |
+          for f in schema/*.json manifest/binaries.manifest.json examples/*.json templates/config/*.json; do
+            echo "  -> $f"
+            jq -e . "$f" >/dev/null
+          done

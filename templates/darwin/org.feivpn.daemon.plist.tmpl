@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Reference template — `feivpnctl ensure-ready` writes the real plist
+     from internal/platform/darwin_launchd.go. This file is committed
+     only so operators can audit the shape we produce. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>org.feivpn.daemon</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>{{.BinPath}}</string>
+    <string>-c</string>
+    <string>{{.ConfigPath}}</string>
+    <string>--logLevel</string>
+    <string>info</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>{{.LogFile}}</string>
+  <key>StandardErrorPath</key>
+  <string>{{.LogFile}}</string>
+  <key>WorkingDirectory</key>
+  <string>{{.WorkingDir}}</string>
+</dict>
+</plist>

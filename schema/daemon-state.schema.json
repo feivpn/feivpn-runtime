@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://feivpn.dev/schemas/ipc/daemon-state-v1.schema.json",
+  "title": "FeiVPN Daemon State File",
+  "description": "Persistent state written by the daemon at startup so that `feivpn --health`, `feivpn --recover`, and feivpnctl can interrogate or recover the running instance even after their parent process has exited. Default path is platform-specific (see daemon-args x-platform-defaults).",
+  "x-default-paths": {
+    "linux":   "/var/run/feivpn/state.json",
+    "darwin":  "/Library/Application Support/FeiVPN/state.json",
+    "windows": "C:/ProgramData/FeiVPN/state.json"
+  },
+  "x-permissions": "0644 (readable by feivpnctl as non-root, writable only by the daemon process owner)",
+  "type": "object",
+  "required": ["schema_version", "pid", "version", "started_at", "tun_name"],
+  "properties": {
+    "schema_version": {"const": 1, "description": "Bumped on incompatible state.json layout changes"},
+    "pid":            {"type": "integer", "minimum": 1},
+    "version":        {"type": "string", "description": "Daemon binary version"},
+    "started_at":     {"type": "string", "format": "date-time"},
+    "tun_name":       {"type": "string", "description": "Actual TUN interface name (resolved on macOS)"},
+    "tun_addr":       {"type": "string", "format": "ipv4"},
+    "tun_gw":         {"type": "string", "format": "ipv4"},
+    "config_path":    {"type": "string", "description": "Path to config.json the daemon was started with"},
+    "key_id":         {"type": "string", "description": "Key ID passed via --keyID"},
+    "platform":       {"type": "string", "enum": ["linux", "darwin", "windows"]},
+    "arch":           {"type": "string", "enum": ["amd64", "arm64", "386"]},
+    "original_route": {
+      "type": "object",
+      "description": "Default route snapshot taken before hijack, used by --recover to restore",
+      "properties": {
+        "default_via":     {"type": "string"},
+        "default_iface":   {"type": "string"},
+        "default_metric":  {"type": "integer"}
+      }
+    },
+    "original_dns": {
+      "type": "object",
+      "description": "DNS resolver snapshot taken before hijack",
+      "properties": {
+        "servers":    {"type": "array", "items": {"type": "string", "format": "ipv4"}},
+        "search":     {"type": "array", "items": {"type": "string"}},
+        "method": {
+          "type": "string",
+          "enum": ["resolv.conf", "systemd-resolved", "scutil", "networksetup"],
+          "description": "How DNS was hijacked, so --recover knows how to restore"
+        }
+      }
+    },
+    "control_socket": {
+      "type": "string",
+      "description": "Optional Unix domain socket path for live control (reserved for future)"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "schema_version": 1,
+      "pid": 48321,
+      "version": "1.2.0",
+      "started_at": "2026-04-22T12:00:00Z",
+      "tun_name": "utun7",
+      "tun_addr": "10.0.85.2",
+      "tun_gw": "10.0.85.1",
+      "config_path": "/etc/feivpn/config.json",
+      "key_id": "abc-123",
+      "platform": "darwin",
+      "arch": "arm64",
+      "original_route": {
+        "default_via": "192.168.1.1",
+        "default_iface": "en0",
+        "default_metric": 0
+      },
+      "original_dns": {
+        "servers": ["192.168.1.1"],
+        "search": ["lan"],
+        "method": "scutil"
+      }
+    }
+  ]
+}

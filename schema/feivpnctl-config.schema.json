@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/feivpn/feivpn-runtime/schema/feivpnctl-config.schema.json",
+  "title": "feivpnctl profile",
+  "description": "User-facing profile written to /etc/feivpn/feivpnctl.json. Mirrors internal/config/Profile.",
+  "type": "object",
+  "required": ["mode", "subscription_token"],
+  "properties": {
+    "channel": {
+      "type": "string",
+      "enum": ["stable", "beta"],
+      "default": "stable"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["global"],
+      "description": "MVP only supports 'global'. 'rule-based' / 'tun-only' are reserved."
+    },
+    "subscription_token": {
+      "type": "string",
+      "minLength": 8,
+      "description": "Token returned by `feiapi getid`. Used by `feiapi getconfig`."
+    },
+    "preferred_node": {
+      "type": "string",
+      "description": "Optional substring match against subscription node names."
+    },
+    "tun_name": {"type": "string"},
+    "tun_addr": {"type": "string", "examples": ["10.111.222.1/24"]},
+    "log_level": {"enum": ["debug", "info", "warn", "error"], "default": "info"}
+  },
+  "additionalProperties": false
+}

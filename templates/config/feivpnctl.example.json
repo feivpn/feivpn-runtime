@@ -1,0 +1,15 @@
+{
+  "$comment": [
+    "Example feivpnctl profile. Copy to /etc/feivpn/feivpnctl.json on the",
+    "target host (or pass --config <path> explicitly).",
+    "",
+    "Only `mode` and `subscription_token` are required."
+  ],
+  "channel": "stable",
+  "mode": "global",
+  "subscription_token": "REPLACE_ME_with_token_from_feiapi_getid",
+  "preferred_node": "",
+  "tun_name": "",
+  "tun_addr": "10.111.222.1/24",
+  "log_level": "info"
+}

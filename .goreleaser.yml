@@ -1,0 +1,83 @@
+# GoReleaser config for feivpnctl + bundled bin/ + schema/ + templates/.
+# Triggered by tags matching v* via .github/workflows/release.yml.
+#
+# Each archive is a self-contained tarball containing:
+#   pkg/feivpnctl
+#   pkg/bin/feivpn-<plat>     (pinned upstream daemon binary)
+#   pkg/bin/feiapi-<plat>     (pinned upstream API client)
+#   pkg/schema/...
+#   pkg/templates/...
+#   pkg/manifest.json
+#   LICENSE README.md SKILL.md
+#
+# scripts/install.sh consumes the resulting feivpn-runtime-<os>-<arch>.tar.gz
+# plus its .sha256 sidecar.
+
+version: 2
+project_name: feivpn-runtime
+
+before:
+  hooks:
+    - go mod tidy
+    - ./scripts/verify-bins.sh
+
+builds:
+  - id: feivpnctl
+    main: ./cmd/feivpnctl
+    binary: feivpnctl
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+    goos:    [linux, darwin]
+    goarch:  [amd64, arm64]
+    ignore:
+      - goos: darwin
+        goarch: amd64    # MVP only ships darwin-arm64
+
+archives:
+  - id: tarball
+    builds: [feivpnctl]
+    name_template: "feivpn-runtime-{{ .Os }}-{{ .Arch }}"
+    formats: [tar.gz]
+    wrap_in_directory: pkg
+    files:
+      # Bundle ONLY the pinned bytes for the matching platform.
+      - src: bin/feivpn-{{ .Os }}-{{ .Arch }}
+        dst: bin/feivpn-{{ .Os }}-{{ .Arch }}
+      - src: bin/feiapi-{{ .Os }}-{{ .Arch }}
+        dst: bin/feiapi-{{ .Os }}-{{ .Arch }}
+      - src: schema
+        dst: schema
+      - src: templates
+        dst: templates
+      - src: manifest/binaries.manifest.json
+        dst: manifest.json
+      - LICENSE
+      - README.md
+      - SKILL.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+  split: true               # one .sha256 per archive (install.sh expects this)
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  github:
+    owner: feivpn
+    name: feivpn-runtime
+  draft: false
+  prerelease: auto
+  name_template: "{{ .ProjectName }} {{ .Tag }}"

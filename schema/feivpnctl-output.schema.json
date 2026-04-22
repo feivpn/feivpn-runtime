@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/feivpn/feivpn-runtime/schema/feivpnctl-output.schema.json",
+  "title": "feivpnctl stdout document",
+  "description": "Single-line JSON document printed to stdout by every feivpnctl action.",
+  "oneOf": [
+    {"$ref": "#/$defs/EnsureReadyResult"},
+    {"$ref": "#/$defs/StatusResult"},
+    {"$ref": "#/$defs/StopResult"},
+    {"$ref": "#/$defs/UpgradeResult"},
+    {"$ref": "#/$defs/ErrorResult"}
+  ],
+  "$defs": {
+    "EnsureReadyResult": {
+      "type": "object",
+      "required": ["status", "platform", "checks"],
+      "properties": {
+        "status":   {"enum": ["ready", "degraded", "failed"]},
+        "platform": {"type": "string", "examples": ["linux-amd64", "darwin-arm64"]},
+        "version":  {"type": "string"},
+        "pid":      {"type": "integer", "minimum": 0},
+        "tun":      {"type": "string"},
+        "checks": {
+          "type": "object",
+          "required": ["process", "tun", "route", "dns", "connectivity"],
+          "properties": {
+            "process":      {"type": "boolean"},
+            "tun":          {"type": "boolean"},
+            "route":        {"type": "boolean"},
+            "dns":          {"type": "boolean"},
+            "connectivity": {"type": "boolean"}
+          }
+        },
+        "errors": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "StatusResult": {
+      "type": "object",
+      "required": ["running", "platform", "service"],
+      "properties": {
+        "running":  {"type": "boolean"},
+        "platform": {"type": "string"},
+        "service": {
+          "type": "object",
+          "required": ["manager", "active"],
+          "properties": {
+            "manager": {"enum": ["systemd", "launchd", "systemd-stub", "launchd-stub"]},
+            "active":  {"type": "boolean"}
+          }
+        },
+        "state":  {"type": "object"},
+        "health": {"type": "object"}
+      }
+    },
+    "StopResult": {
+      "type": "object",
+      "required": ["stopped", "recovery"],
+      "properties": {
+        "stopped":  {"type": "boolean"},
+        "recovery": {"type": "boolean"},
+        "errors":   {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "UpgradeResult": {
+      "type": "object",
+      "required": ["restarted"],
+      "properties": {
+        "old_version": {"type": "string"},
+        "new_version": {"type": "string"},
+        "restarted":   {"type": "boolean"},
+        "notes":       {"type": "string"}
+      }
+    },
+    "ErrorResult": {
+      "type": "object",
+      "required": ["status", "error"],
+      "properties": {
+        "status": {"const": "failed"},
+        "error":  {"type": "string"}
+      }
+    }
+  }
+}
