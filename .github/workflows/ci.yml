@@ -46,14 +46,14 @@ jobs:
       - name: verify
         run: ./scripts/verify-bins.sh
 
-  schema-syntax:
-    name: schema files parse cleanly
+  json-syntax:
+    name: bundled JSON files parse cleanly
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: jq syntax check
         run: |
-          for f in schema/*.json manifest/binaries.manifest.json examples/*.json templates/config/*.json; do
+          for f in manifest/binaries.manifest.json examples/*.json templates/config/*.json; do
             echo "  -> $f"
             jq -e . "$f" >/dev/null
           done

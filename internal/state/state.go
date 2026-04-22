@@ -1,8 +1,7 @@
-// Package state mirrors the daemon-state.schema.json contract from
-// feivpn/feivpn-apps/client/protocol/ipc/daemon-state.schema.json
-//
-// The daemon writes this file when it starts and deletes it on graceful
-// shutdown; feivpnctl reads it to answer `status` and to drive `stop`.
+// Package state models the daemon's on-disk state.json file. The daemon
+// (feivpn/feivpn-apps client/go/outline/electron/daemon_control.go)
+// writes it when it starts and deletes it on graceful shutdown;
+// feivpnctl reads it to answer `status` and to drive `stop`.
 package state
 
 import (
@@ -32,7 +31,8 @@ func DefaultPath() string {
 	return defaultLinux
 }
 
-// State mirrors daemon-state.schema.json.
+// State mirrors the daemon's DaemonState struct (see
+// client/go/outline/electron/daemon_control.go in feivpn/feivpn-apps).
 type State struct {
 	SchemaVersion int            `json:"schema_version"`
 	Pid           int            `json:"pid"`

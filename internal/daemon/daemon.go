@@ -1,9 +1,9 @@
 // Package daemon is a thin wrapper around the pinned `feivpn` binary
 // from feivpn/feivpn-apps.
 //
-// We only model the subset of flags that feivpnctl actually uses, all
-// of which are documented in client/protocol/ipc/daemon-args.schema.json.
-// Anything outside that surface should be added there first, never here.
+// We only model the subset of flags that feivpnctl actually uses; the
+// authoritative list of flags is the daemon's main.go + daemon_control.go
+// in the upstream repo.
 package daemon
 
 import (
@@ -22,9 +22,9 @@ type Client struct {
 // New returns a Client backed by the given binary locator.
 func New(loc *binmgr.Locator) *Client { return &Client{loc: loc} }
 
-// HealthReport mirrors daemon-health.schema.json. Only the fields
-// feivpnctl currently consumes are modelled; unknown fields round-trip
-// through json.RawMessage in Extra.
+// HealthReport mirrors the daemon's `--health` JSON output. Only the
+// fields feivpnctl currently consumes are modelled; unknown fields are
+// silently dropped by json.Unmarshal.
 type HealthReport struct {
 	Running      bool       `json:"running"`
 	Pid          int        `json:"pid,omitempty"`

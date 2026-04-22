@@ -82,8 +82,8 @@ Read-only. Combines the OS service-manager view, the daemon's
   "running": true,
   "platform": "linux-amd64",
   "service": {"manager": "systemd", "active": true},
-  "state":   { "...": "see schema/daemon-state.schema.json" },
-  "health":  { "...": "see schema/daemon-health.schema.json" }
+  "state":   { "...": "feivpn daemon state.json contents" },
+  "health":  { "...": "feivpn --health JSON output" }
 }
 ```
 
@@ -154,7 +154,7 @@ if the user explicitly opted into a *temporary* VPN.
 
 ## Where to learn more
 
-- `schema/feivpnctl-output.schema.json` — full machine-readable contract
-- `schema/feivpnctl-config.schema.json` — profile shape
+- `internal/action/types.go` — exact Go structs printed to stdout
+- `internal/config/config.go` — `Profile` struct (the `/etc/feivpn/feivpnctl.json` shape)
 - `manifest/binaries.manifest.json` — pinned upstream daemon + API binaries
 - `docs/architecture.md` — the 3-layer design (skill / daemon / host adapter)

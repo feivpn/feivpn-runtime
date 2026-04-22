@@ -40,10 +40,9 @@ specifically for this skill:
 | `--recover`  | Restore the original default route + DNS from `state.json`    |
 
 Plus a `state.json` file under `/var/lib/feivpn/` written on start and
-deleted on graceful shutdown. The schemas for both the health blob and
-the state file are committed at
-`feivpn/feivpn-apps/client/protocol/ipc/` and vendored here under
-`schema/`.
+deleted on graceful shutdown. The Go side mirrors the daemon's structs
+in `internal/state/state.go` and `internal/daemon/daemon.go`; that's the
+contract — there is no separate schema file to keep in sync.
 
 ### Layer 3 — Host adapter (`internal/platform/`)
 

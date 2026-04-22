@@ -1,20 +1,16 @@
-# `schema/` — JSON Schema for feivpnctl I/O
+# `schema/`
 
-These schemas mirror (or directly reference) the daemon-side contracts
-maintained in `feivpn/feivpn-apps/client/protocol/`:
+Intentionally minimal. **Contracts live in source code**, not in
+hand-maintained schema files:
 
-| File                          | Mirrors / depends on                                                                       |
-| ----------------------------- | ------------------------------------------------------------------------------------------ |
-| `feivpnctl-output.schema.json`| Single-line JSON documents that `feivpnctl <action>` prints to stdout                       |
-| `feivpnctl-config.schema.json`| The user-facing profile under `/etc/feivpn/feivpnctl.json` (mirrors `internal/config/`)     |
-| `daemon-state.schema.json`    | Verbatim copy of `client/protocol/ipc/daemon-state.schema.json` (vendored for offline use)  |
-| `daemon-health.schema.json`   | Verbatim copy of `client/protocol/ipc/daemon-health.schema.json` (vendored for offline use) |
+| What                                          | Source of truth                                                |
+| --------------------------------------------- | -------------------------------------------------------------- |
+| `feivpnctl` stdout payloads                   | `internal/action/types.go` (Go structs, JSON-encoded)          |
+| `/etc/feivpn/feivpnctl.json` profile          | `internal/config/config.go` (`Profile` struct)                 |
+| daemon `state.json`                           | `internal/state/state.go` here, mirrored from upstream         |
+| daemon `--health` output                      | `internal/daemon/daemon.go` here, mirrored from upstream       |
 
-> Why vendor copies?  feivpn-runtime must be installable on a fresh
-> machine that has no access to the upstream repo, so the schemas are
-> shipped inside the release tarball and the ones bundled here are the
-> authoritative copy at the pinned upstream revision.
->
-> When you bump `manifest/binaries.manifest.json` you SHOULD also
-> re-sync the `daemon-*.schema.json` files; CI fails the release if
-> the schema versions in the manifest don't match the file headers.
+We deliberately do not ship JSON Schema files: this is a single-maintainer
+project and parallel schemas drift away from the code within weeks. If
+you need to validate a payload, JSON-decode it into the matching Go
+struct — that's the contract.
