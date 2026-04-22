@@ -9,13 +9,16 @@ GOARCH ?= $(shell go env GOARCH)
 BIN_DIR := dist
 FEIVPNCTL := $(BIN_DIR)/feivpnctl-$(GOOS)-$(GOARCH)
 
-.PHONY: all build test lint clean tarball sync-bins verify-bins help
+.PHONY: all build build-all test lint clean tarball sync-bins verify-bins help
 
 all: build
 
 help:
 	@echo "Targets:"
 	@echo "  build       — compile feivpnctl for the current host"
+	@echo "  build-all   — cross-compile feivpnctl for all 4 release targets"
+	@echo "                (linux/amd64, linux/arm64, darwin/amd64, darwin/arm64)"
+	@echo "                via scripts/build-cli-binaries.sh"
 	@echo "  test        — go test ./..."
 	@echo "  lint        — go vet ./..."
 	@echo "  tarball     — produce dist/feivpn-runtime-{os}-{arch}.tar.gz"
@@ -30,6 +33,9 @@ build:
 	  go build -trimpath -ldflags "$(LDFLAGS)" \
 	  -o $(FEIVPNCTL) ./cmd/feivpnctl
 	@echo "Built $(FEIVPNCTL)"
+
+build-all:
+	./scripts/build-cli-binaries.sh --version $(VERSION)
 
 test:
 	go test ./...

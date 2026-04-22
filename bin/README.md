@@ -66,9 +66,41 @@ make sync-bins
 # 3. Verify locally before committing
 make verify-bins
 # 4. Commit manifest + bin/ together in one PR
-git add manifest/binaries.manifest.json bin/feivpn-* bin/feiapi-*
+git add manifest/binaries.manifest.json bin/feivpn-* bin/feiapi-* bin/feivpn-router-*
 git commit -s -m "bin: bump feivpn to vX.Y.Z and feiapi to vA.B.C"
 ```
+
+If you need to **build** the upstream binaries from source instead of
+pulling pre-built artefacts (e.g. you're cutting a brand-new tag and the
+release isn't published yet), use the matching scripts in
+`feivpn-apps/scripts/`:
+
+| Script                              | Produces                                      |
+| ----------------------------------- | --------------------------------------------- |
+| `build-router-binaries.sh`          | C++ `feivpn-router` (universal mac + linux)   |
+| `build-go-binaries.sh`              | Go `feivpn` daemon + `feiapi` CLI (4 targets) |
+
+Both scripts print `cp` commands and manifest snippets ready to paste
+back here. See each script's `--help` for flags.
+
+## Building feivpnctl itself
+
+`feivpnctl` is the user-facing CLI that lives in this repo (not in
+`bin/` — it's the entrypoint). Two ways to build it:
+
+```sh
+# Local build for the current host only
+make build
+
+# Cross-compile for all 4 release targets (no Docker, pure Go)
+make build-all                                    # version = git describe
+./scripts/build-cli-binaries.sh --version 0.2.0   # explicit version
+```
+
+Output lands in `dist/feivpnctl/`. For a full release tarball with
+bundled bin/ + templates + manifest, use `make tarball` (current host)
+or push a `v*` git tag and let GoReleaser produce all four tarballs in
+CI (see `.github/workflows/release.yml`).
 
 ## Why aren't there Windows binaries?
 

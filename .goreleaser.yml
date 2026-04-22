@@ -1,17 +1,20 @@
-# GoReleaser config for feivpnctl + bundled bin/ + schema/ + templates/.
+# GoReleaser config for feivpnctl + bundled bin/ + templates/.
 # Triggered by tags matching v* via .github/workflows/release.yml.
 #
 # Each archive is a self-contained tarball containing:
 #   pkg/feivpnctl
-#   pkg/bin/feivpn-<plat>     (pinned upstream daemon binary)
-#   pkg/bin/feiapi-<plat>     (pinned upstream API client)
-#   pkg/schema/...
+#   pkg/bin/feivpn-<plat>            (pinned upstream daemon)
+#   pkg/bin/feiapi-<plat>            (pinned upstream API client)
+#   pkg/bin/feivpn-router-<plat>     (root proxy controller, C++)
+#                                    macOS uses the universal binary
+#                                    (lipo arm64+x86_64), Linux is per-arch.
 #   pkg/templates/...
 #   pkg/manifest.json
 #   LICENSE README.md SKILL.md
 #
 # scripts/install.sh consumes the resulting feivpn-runtime-<os>-<arch>.tar.gz
-# plus its .sha256 sidecar.
+# plus its .sha256 sidecar and symlinks bin/{feivpn,feiapi,feivpn-router}
+# to the per-platform file.
 
 version: 2
 project_name: feivpn-runtime
@@ -32,24 +35,47 @@ builds:
       - -X main.version={{ .Version }}
     goos:    [linux, darwin]
     goarch:  [amd64, arm64]
-    ignore:
-      - goos: darwin
-        goarch: amd64    # MVP only ships darwin-arm64
 
 archives:
-  - id: tarball
+  # Linux: feivpn-router ships per-arch (linux-amd64 / linux-arm64).
+  - id: tarball-linux
     builds: [feivpnctl]
+    goos: [linux]
     name_template: "feivpn-runtime-{{ .Os }}-{{ .Arch }}"
     formats: [tar.gz]
     wrap_in_directory: pkg
     files:
-      # Bundle ONLY the pinned bytes for the matching platform.
       - src: bin/feivpn-{{ .Os }}-{{ .Arch }}
         dst: bin/feivpn-{{ .Os }}-{{ .Arch }}
       - src: bin/feiapi-{{ .Os }}-{{ .Arch }}
         dst: bin/feiapi-{{ .Os }}-{{ .Arch }}
-      - src: schema
-        dst: schema
+      - src: bin/feivpn-router-{{ .Os }}-{{ .Arch }}
+        dst: bin/feivpn-router-{{ .Os }}-{{ .Arch }}
+      - src: templates
+        dst: templates
+      - src: manifest/binaries.manifest.json
+        dst: manifest.json
+      - LICENSE
+      - README.md
+      - SKILL.md
+
+  # macOS: feivpn / feiapi are per-arch but feivpn-router is a single
+  # Universal Binary (mirrors the upstream Electron client). Both
+  # darwin-arm64 and darwin-amd64 tarballs include the same router file;
+  # install.sh symlinks it to the stable name.
+  - id: tarball-darwin
+    builds: [feivpnctl]
+    goos: [darwin]
+    name_template: "feivpn-runtime-{{ .Os }}-{{ .Arch }}"
+    formats: [tar.gz]
+    wrap_in_directory: pkg
+    files:
+      - src: bin/feivpn-{{ .Os }}-{{ .Arch }}
+        dst: bin/feivpn-{{ .Os }}-{{ .Arch }}
+      - src: bin/feiapi-{{ .Os }}-{{ .Arch }}
+        dst: bin/feiapi-{{ .Os }}-{{ .Arch }}
+      - src: bin/feivpn-router-darwin-universal
+        dst: bin/feivpn-router-darwin-universal
       - src: templates
         dst: templates
       - src: manifest/binaries.manifest.json
