@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Maintainer command: pulls feivpn + feiapi binaries from the upstream
-# vilizhe/feivpn-apps GitHub Releases according to manifest/binaries.manifest.json
+# feivpn/feivpn-apps GitHub Releases according to manifest/binaries.manifest.json
 # and lays them out under bin/. Verifies SHA256 along the way.
 #
 # Usage:

@@ -1,5 +1,5 @@
 // Package feiapi is a thin wrapper around the pinned `feiapi` CLI from
-// vilizhe/feivpn-apps. feivpnctl never imports the Go API client
+// feivpn/feivpn-apps. feivpnctl never imports the Go API client
 // package directly — it spawns the pre-built feiapi binary so that the
 // API secret stays baked into a single auditable artefact.
 package feiapi

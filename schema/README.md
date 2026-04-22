@@ -1,7 +1,7 @@
 # `schema/` — JSON Schema for feivpnctl I/O
 
 These schemas mirror (or directly reference) the daemon-side contracts
-maintained in `vilizhe/feivpn-apps/client/protocol/`:
+maintained in `feivpn/feivpn-apps/client/protocol/`:
 
 | File                          | Mirrors / depends on                                                                       |
 | ----------------------------- | ------------------------------------------------------------------------------------------ |

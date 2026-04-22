@@ -11,7 +11,7 @@
 ## What it is
 
 `feivpn-runtime` is the *agent-friendly* counterpart to the FeiVPN
-daemon (which lives in [`vilizhe/feivpn-apps`](https://github.com/vilizhe/feivpn-apps)).
+daemon (which lives in [`feivpn/feivpn-apps`](https://github.com/feivpn/feivpn-apps)).
 It does three things:
 
 1. Ships pre-built `feivpn` (the daemon) and `feiapi` (the API client)
@@ -33,8 +33,8 @@ It does three things:
        ┌───────────────────────┴───────────────────────┐
        ▼                                               ▼
 ┌────────────────────┐                       ┌──────────────────┐
-│ Layer 2 — Daemon   │                       │ feiapi  (vilizhe)│
-│  feivpn (vilizhe)  │  TUN / route / DNS    │  HTTP API client │
+│ Layer 2 — Daemon   │                       │ feiapi  (upstream)│
+│  feivpn (upstream) │  TUN / route / DNS    │  HTTP API client  │
 └──────────┬─────────┘                       └──────────────────┘
            │ uses
            ▼

@@ -1,5 +1,5 @@
 // Package daemon is a thin wrapper around the pinned `feivpn` binary
-// from vilizhe/feivpn-apps.
+// from feivpn/feivpn-apps.
 //
 // We only model the subset of flags that feivpnctl actually uses, all
 // of which are documented in client/protocol/ipc/daemon-args.schema.json.

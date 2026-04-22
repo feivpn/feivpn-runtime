@@ -6,7 +6,7 @@ Thanks for your interest! A few ground rules.
 
 This repo deliberately stays small. Anything that requires touching
 TUN devices, packet forwarding, DNS hijacking, or the FeiVPN backend
-API belongs in `vilizhe/feivpn-apps`, not here. We import the result of
+API belongs in `feivpn/feivpn-apps`, not here. We import the result of
 those projects via pinned binaries in `bin/`.
 
 If you find yourself wanting to vendor a kernel-networking library or
@@ -23,7 +23,7 @@ parse a Shadowsocks frame, you're in the wrong repo.
 ## Bumping pinned binaries
 
 Always go through the official upstream Release first
-(`vilizhe/feivpn-apps` → `daemon-v*` or `api-v*` tag). Then in this
+(`feivpn/feivpn-apps` → `daemon-v*` or `api-v*` tag). Then in this
 repo:
 
 ```bash
@@ -43,7 +43,7 @@ commit so CI's drift check is meaningful.
 e.g. `linux/riscv64` requires:
 
 1. Cross-compile feivpn + feiapi for the new triple in
-   `vilizhe/feivpn-apps/.goreleaser.{daemon,feiapi}.yaml`.
+   `feivpn/feivpn-apps/.goreleaser.{daemon,feiapi}.yaml`.
 2. Add the triple to `manifest/binaries.manifest.json`.
 3. Drop the new `bin/feivpn-linux-riscv64` and `bin/feiapi-linux-riscv64`
    into git via `make sync-bins`.

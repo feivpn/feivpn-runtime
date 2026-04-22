@@ -5,12 +5,12 @@ This directory is **checked in to git** and contains the binaries that
 
 | File                       | Built from                                                  |
 | -------------------------- | ----------------------------------------------------------- |
-| `feivpn-linux-amd64`       | `vilizhe/feivpn-apps` → `client/go/outline/electron`        |
-| `feivpn-linux-arm64`       | `vilizhe/feivpn-apps` → `client/go/outline/electron`        |
-| `feivpn-darwin-arm64`      | `vilizhe/feivpn-apps` → `client/go/outline/electron`        |
-| `feiapi-linux-amd64`       | `vilizhe/feivpn-apps` → `client/go/api/cmd/feiapi`          |
-| `feiapi-linux-arm64`       | `vilizhe/feivpn-apps` → `client/go/api/cmd/feiapi`          |
-| `feiapi-darwin-arm64`      | `vilizhe/feivpn-apps` → `client/go/api/cmd/feiapi`          |
+| `feivpn-linux-amd64`       | `feivpn/feivpn-apps` → `client/go/outline/electron`        |
+| `feivpn-linux-arm64`       | `feivpn/feivpn-apps` → `client/go/outline/electron`        |
+| `feivpn-darwin-arm64`      | `feivpn/feivpn-apps` → `client/go/outline/electron`        |
+| `feiapi-linux-amd64`       | `feivpn/feivpn-apps` → `client/go/api/cmd/feiapi`          |
+| `feiapi-linux-arm64`       | `feivpn/feivpn-apps` → `client/go/api/cmd/feiapi`          |
+| `feiapi-darwin-arm64`      | `feivpn/feivpn-apps` → `client/go/api/cmd/feiapi`          |
 
 ## Why ship binaries in git?
 

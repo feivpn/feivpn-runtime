@@ -14,48 +14,48 @@
   ],
   "manifest_version": 1,
   "feivpn": {
-    "upstream": "vilizhe/feivpn-apps",
+    "upstream": "feivpn/feivpn-apps",
     "tag":      "daemon-v0.0.0-PLACEHOLDER",
     "version":  "0.0.0-PLACEHOLDER",
-    "release_url": "https://github.com/vilizhe/feivpn-apps/releases/tag/daemon-v0.0.0-PLACEHOLDER",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/daemon-v0.0.0-PLACEHOLDER",
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feivpn-linux-amd64",
         "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/vilizhe/feivpn-apps/releases/download/daemon-v0.0.0-PLACEHOLDER/feivpn-linux-amd64.tar.gz"
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.0.0-PLACEHOLDER/feivpn-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feivpn-linux-arm64",
         "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/vilizhe/feivpn-apps/releases/download/daemon-v0.0.0-PLACEHOLDER/feivpn-linux-arm64.tar.gz"
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.0.0-PLACEHOLDER/feivpn-linux-arm64.tar.gz"
       },
       "darwin-arm64": {
         "path":   "bin/feivpn-darwin-arm64",
         "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/vilizhe/feivpn-apps/releases/download/daemon-v0.0.0-PLACEHOLDER/feivpn-darwin-arm64.tar.gz"
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.0.0-PLACEHOLDER/feivpn-darwin-arm64.tar.gz"
       }
     }
   },
   "feiapi": {
-    "upstream": "vilizhe/feivpn-apps",
+    "upstream": "feivpn/feivpn-apps",
     "tag":      "api-v0.0.0-PLACEHOLDER",
     "version":  "0.0.0-PLACEHOLDER",
-    "release_url": "https://github.com/vilizhe/feivpn-apps/releases/tag/api-v0.0.0-PLACEHOLDER",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/api-v0.0.0-PLACEHOLDER",
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feiapi-linux-amd64",
         "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/vilizhe/feivpn-apps/releases/download/api-v0.0.0-PLACEHOLDER/feiapi-linux-amd64.tar.gz"
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.0.0-PLACEHOLDER/feiapi-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feiapi-linux-arm64",
         "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/vilizhe/feivpn-apps/releases/download/api-v0.0.0-PLACEHOLDER/feiapi-linux-arm64.tar.gz"
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.0.0-PLACEHOLDER/feiapi-linux-arm64.tar.gz"
       },
       "darwin-arm64": {
         "path":   "bin/feiapi-darwin-arm64",
         "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/vilizhe/feivpn-apps/releases/download/api-v0.0.0-PLACEHOLDER/feiapi-darwin-arm64.tar.gz"
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.0.0-PLACEHOLDER/feiapi-darwin-arm64.tar.gz"
       }
     }
   }

@@ -1,5 +1,5 @@
 // Package state mirrors the daemon-state.schema.json contract from
-// vilizhe/feivpn-apps/client/protocol/ipc/daemon-state.schema.json
+// feivpn/feivpn-apps/client/protocol/ipc/daemon-state.schema.json
 //
 // The daemon writes this file when it starts and deletes it on graceful
 // shutdown; feivpnctl reads it to answer `status` and to drive `stop`.

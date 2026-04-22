@@ -2,7 +2,7 @@
 
 `feivpn-runtime` is intentionally a **thin orchestration layer**. All
 the hard parts — TUN devices, routing tables, DNS hijacking, the
-forwarding loop — live in the upstream FeiVPN daemon (`vilizhe/feivpn-apps`).
+forwarding loop — live in the upstream FeiVPN daemon (`feivpn/feivpn-apps`).
 This document explains where the line is drawn and why.
 
 ## Three layers
@@ -29,7 +29,7 @@ What it does NOT do:
 ### Layer 2 — Daemon (upstream `feivpn`)
 
 The same Go binary that powers the Outline-derived FeiVPN clients
-(`vilizhe/feivpn-apps/client/go/outline/electron`). On top of its
+(`feivpn/feivpn-apps/client/go/outline/electron`). On top of its
 existing job (TUN forwarding loop) we added three control-plane flags
 specifically for this skill:
 
@@ -42,7 +42,7 @@ specifically for this skill:
 Plus a `state.json` file under `/var/lib/feivpn/` written on start and
 deleted on graceful shutdown. The schemas for both the health blob and
 the state file are committed at
-`vilizhe/feivpn-apps/client/protocol/ipc/` and vendored here under
+`feivpn/feivpn-apps/client/protocol/ipc/` and vendored here under
 `schema/`.
 
 ### Layer 3 — Host adapter (`internal/platform/`)

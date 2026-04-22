@@ -20,7 +20,7 @@ help:
 	@echo "  lint        — go vet ./..."
 	@echo "  tarball     — produce dist/feivpn-runtime-{os}-{arch}.tar.gz"
 	@echo "  sync-bins   — fetch latest feivpn + feiapi binaries from"
-	@echo "                vilizhe/feivpn-apps Releases into bin/"
+	@echo "                feivpn/feivpn-apps Releases into bin/"
 	@echo "  verify-bins — re-hash bin/ and check against manifest/binaries.manifest.json"
 	@echo "  clean       — rm -rf dist/"
 
