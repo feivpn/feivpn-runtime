@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,10 +15,19 @@ import (
 	"github.com/feivpn/feivpn-runtime/internal/feiapi"
 	"github.com/feivpn/feivpn-runtime/internal/logging"
 	"github.com/feivpn/feivpn-runtime/internal/platform"
+	"github.com/feivpn/feivpn-runtime/internal/router"
 	"github.com/feivpn/feivpn-runtime/internal/state"
 	"github.com/feivpn/feivpn-runtime/internal/store"
 	"github.com/feivpn/feivpn-runtime/internal/tz"
 )
+
+// linuxRouterTunName is the TUN device the C++ feivpn-router creates and
+// installs routes against (see outline_proxy_controller.h
+// `tunInterfaceName = "feivpn-tun1"` in feivpn-apps). The Go daemon must
+// open *this* device, not the default `tun0`, otherwise tun2socks
+// runs on a TUN that the router never installed routes against and
+// every health check shows tun=false / connectivity=false.
+const linuxRouterTunName = "feivpn-tun1"
 
 // EnsureReady is the main bootstrap entry point.
 //
@@ -51,7 +61,7 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 	}
 
 	// Step 3: render daemon config from subscription.
-	configPath, err := r.renderDaemonConfig()
+	configPath, node, err := r.renderDaemonConfig()
 	if err != nil {
 		return appendErr(res, err)
 	}
@@ -106,6 +116,14 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 		LogFile:    r.Paths.LogFile,
 		Args:       []string{"-client", clientJSON},
 	}
+	// On Linux the C++ router creates `feivpn-tun1` at startup; make
+	// the Go daemon attach to *that* device instead of creating its
+	// own `tun0`. Without this the router and the daemon end up
+	// holding two unrelated TUN devices and the route hijack points
+	// at a TUN nobody is reading from.
+	if runtime.GOOS == "linux" {
+		installOpts.Args = append(installOpts.Args, "-tunName", linuxRouterTunName)
+	}
 	if r.Profile.LogLevel != "" {
 		installOpts.Args = append(installOpts.Args, "--logLevel", r.Profile.LogLevel)
 	}
@@ -116,13 +134,31 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 		return appendErr(res, fmt.Errorf("SERVICE_START_FAILED: %w", err))
 	}
 
-	// Step 6: wait + health-check (with bounded retries)
+	// Step 6: tell the router to hijack routes / DNS toward the proxy.
+	// The router sat idle until now (it only listens on its socket),
+	// so this is the call that actually flips the system into
+	// VPN-routed mode. Best-effort — failures bubble up via Errors so
+	// status reports them, but we still wait for health afterwards
+	// because the daemon side may still be partially functional.
+	if proxyIP, perr := resolveProxyIP(node); perr == nil && proxyIP != "" {
+		if err := router.Configure(proxyIP, 10*time.Second); err != nil {
+			res.Errors = append(res.Errors, "ROUTER_CONFIGURE_FAILED: "+err.Error())
+			logging.Warn("ensure_ready: router.Configure failed", "proxy_ip", proxyIP, "err", err)
+		} else {
+			logging.Info("ensure_ready: router configured", "proxy_ip", proxyIP)
+		}
+	} else if perr != nil {
+		res.Errors = append(res.Errors, "PROXY_IP_RESOLVE_FAILED: "+perr.Error())
+		logging.Warn("ensure_ready: cannot resolve proxy ip for router", "err", perr)
+	}
+
+	// Step 7: wait + health-check (with bounded retries)
 	health, err := r.waitForHealth(20*time.Second, 1*time.Second)
 	if err != nil {
 		return appendErr(res, err)
 	}
 
-	// Step 7: assemble report
+	// Step 8: assemble report
 	res.Checks = CheckReport{
 		Process:      health.Checks.Process,
 		Tun:          health.Checks.TUN,
@@ -153,19 +189,20 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 // account is auto-bootstrapped via /getid on first run.
 //
 // In the MVP we generate a minimal Outline-compatible config block with
-// the selected SubscriptionNode.
-func (r *Runner) renderDaemonConfig() (string, error) {
+// the selected SubscriptionNode. The chosen node is returned so callers
+// can extract its proxy host/IP for the router IPC handshake.
+func (r *Runner) renderDaemonConfig() (string, *feiapi.SubscriptionNode, error) {
 	subscribeURL := r.Profile.SubscriptionToken
 	if subscribeURL != "" {
 		logging.Info("ensure_ready: using subscribe_url from --token / profile override")
 	} else {
 		acc, err := r.refreshAccountForEnsureReady()
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 		subscribeURL = acc.SubscribeURL
 		if subscribeURL == "" {
-			return "", fmt.Errorf("CONFIG_INCOMPLETE: server returned no subscribe_url — try `feivpnctl whoami` or pass --token <subscribe_url>")
+			return "", nil, fmt.Errorf("CONFIG_INCOMPLETE: server returned no subscribe_url — try `feivpnctl whoami` or pass --token <subscribe_url>")
 		}
 		logging.Info("ensure_ready: using subscribe_url from store", "uuid", acc.UUID, "logged_in", acc.IsLoggedIn())
 	}
@@ -175,11 +212,11 @@ func (r *Runner) renderDaemonConfig() (string, error) {
 	// ("CST", "PST", …) as a query value.
 	nodes, err := r.Feiapi.GetConfig(subscribeURL, zone)
 	if err != nil {
-		return "", fmt.Errorf("SUBSCRIPTION_FETCH_FAILED: %w", err)
+		return "", nil, fmt.Errorf("SUBSCRIPTION_FETCH_FAILED: %w", err)
 	}
 	node, err := r.Profile.SelectNode(nodes)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	// Important: feivpn --check/--config expects the same JSON shape as
@@ -195,12 +232,58 @@ func (r *Runner) renderDaemonConfig() (string, error) {
 	}
 	raw, _ := json.MarshalIndent(cfg, "", "  ")
 	if err := os.MkdirAll(filepath.Dir(r.Paths.ConfigFile), 0o755); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if err := os.WriteFile(r.Paths.ConfigFile, raw, 0o600); err != nil {
-		return "", err
+		return "", nil, err
 	}
-	return r.Paths.ConfigFile, nil
+	return r.Paths.ConfigFile, node, nil
+}
+
+// resolveProxyIP returns the IP literal the C++ router needs to install
+// the /32 priority route to the proxy. The router calls
+// `ip route get <addr>` internally and that command does not accept
+// hostnames, so we resolve here.
+//
+// Strategy:
+//   - If feiapi already populated node.Server with a literal IP, use it.
+//   - Else parse the access key URL host (already done by parseAccessKey)
+//     and DNS-resolve it. We pick the first IPv4 result; the router
+//     itself is IPv4-only on Linux and tries to disable IPv6 anyway.
+//
+// Returns ("", nil) if the node is nil — caller treats that as
+// "skip router configuration" (e.g. profile-only test mode).
+func resolveProxyIP(node *feiapi.SubscriptionNode) (string, error) {
+	if node == nil {
+		return "", nil
+	}
+	host := strings.TrimSpace(node.Server)
+	if host == "" {
+		return "", fmt.Errorf("subscription node has no server host (access_key=%q)", truncateForLog(node.AccessKey, 32))
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.String(), nil
+	}
+	addrs, err := net.LookupIP(host)
+	if err != nil {
+		return "", fmt.Errorf("dns lookup %q: %w", host, err)
+	}
+	for _, ip := range addrs {
+		if v4 := ip.To4(); v4 != nil {
+			return v4.String(), nil
+		}
+	}
+	if len(addrs) > 0 {
+		return addrs[0].String(), nil
+	}
+	return "", fmt.Errorf("no addresses returned for %q", host)
+}
+
+func truncateForLog(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
 }
 
 // waitForHealth polls `feivpn --health` until everything is green or

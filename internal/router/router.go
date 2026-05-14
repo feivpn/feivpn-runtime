@@ -10,20 +10,25 @@
 //	macOS  → tcp:127.0.0.1:38964               (managed by launchd as
 //	                                            a LaunchDaemon)
 //
-// feivpnctl's only jobs here are:
+// feivpnctl's responsibilities here are:
 //
-//  1. Locate + verify the binary via the manifest (binmgr).
+//  1. Locate + verify the router binary via the manifest (binmgr).
 //  2. Tell the platform adapter to install + start it as a privileged
 //     service unit *before* the user-level feivpn daemon is launched.
 //  3. After the daemon stops, the platform adapter stops this too.
-//
-// We deliberately do NOT model --health / --recover here yet: the
-// upstream router does not expose them today. Once it does we'll add
-// thin Health() / Recover() helpers symmetrical to internal/daemon.
+//  4. Drive the router's IPC contract (configureRouting / resetRouting).
+//     This was originally the Electron TypeScript layer's job (see
+//     `RoutingDaemon` in feivpn-apps/client/electron/routing_service.ts);
+//     in the standalone bootstrap world `feivpnctl ensure-ready` /
+//     `feivpnctl stop` own it.
 package router
 
 import (
+	"encoding/json"
+	"fmt"
+	"net"
 	"runtime"
+	"time"
 
 	"github.com/feivpn/feivpn-runtime/internal/binmgr"
 )
@@ -61,4 +66,105 @@ func SocketAddress() (scheme, addr string) {
 	default:
 		return "", ""
 	}
+}
+
+// ----- IPC: configureRouting / resetRouting -------------------------------
+//
+// Wire format (mirrors RoutingDaemon in routing_service.ts):
+//
+//   - Request:  one JSON object, no length prefix. The C++ server reads
+//     until it sees a balanced "}" so we MUST emit compact single-line
+//     JSON (no pretty-printing).
+//   - Response: one JSON object, same framing. Server may push
+//     unsolicited `statusChanged` events on the same socket; we drain
+//     one extra frame if the first reply isn't ours.
+//
+// Routing-pollution monitoring (re-hijack after dhclient overwrites the
+// default route) on the C++ side only runs while the IPC session is
+// OPEN. We connect, command, then immediately disconnect — fine for the
+// typical server-side install where the route table doesn't churn. If
+// long-lived monitoring matters in the future, the right home is a tiny
+// supervisor subprocess managed alongside feivpn.service.
+
+type ipcRequest struct {
+	Action     string         `json:"action"`
+	Parameters map[string]any `json:"parameters"`
+}
+
+type ipcResponse struct {
+	Action       string `json:"action"`
+	StatusCode   int    `json:"statusCode"`
+	ErrorMessage string `json:"errorMessage,omitempty"`
+}
+
+// Configure tells the router to hijack the default route to the proxy
+// server reachable at proxyIP. proxyIP MUST be a literal IP — the C++
+// side calls `ip route get <ip>` which doesn't accept hostnames.
+func Configure(proxyIP string, timeout time.Duration) error {
+	if proxyIP == "" {
+		return fmt.Errorf("router: proxyIP is required")
+	}
+	return roundtrip(ipcRequest{
+		Action: "configureRouting",
+		Parameters: map[string]any{
+			"proxyIp":       proxyIP,
+			"isAutoConnect": false,
+		},
+	}, timeout)
+}
+
+// Reset asks the router to restore the original default route + DNS.
+// Best-effort: callers should still call `feivpn --recover` afterwards
+// in case the router was already down.
+func Reset(timeout time.Duration) error {
+	return roundtrip(ipcRequest{
+		Action:     "resetRouting",
+		Parameters: map[string]any{},
+	}, timeout)
+}
+
+func roundtrip(req ipcRequest, timeout time.Duration) error {
+	network, addr := SocketAddress()
+	if network == "" {
+		return fmt.Errorf("router: unsupported OS %s", runtime.GOOS)
+	}
+	dialer := net.Dialer{Timeout: timeout}
+	conn, err := dialer.Dial(network, addr)
+	if err != nil {
+		return fmt.Errorf("router: dial %s/%s: %w", network, addr, err)
+	}
+	defer conn.Close()
+
+	if err := conn.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return fmt.Errorf("router: set deadline: %w", err)
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("router: marshal: %w", err)
+	}
+	if _, err := conn.Write(body); err != nil {
+		return fmt.Errorf("router: write %s: %w", req.Action, err)
+	}
+
+	dec := json.NewDecoder(conn)
+	var resp ipcResponse
+	if err := dec.Decode(&resp); err != nil {
+		return fmt.Errorf("router: read %s reply: %w", req.Action, err)
+	}
+	if resp.Action != "" && resp.Action != req.Action {
+		// Server pushed a status event before our reply (rare on a
+		// fresh connection, but possible). Decode one more frame.
+		if err := dec.Decode(&resp); err != nil {
+			return fmt.Errorf("router: read %s reply (after event): %w", req.Action, err)
+		}
+	}
+	if resp.StatusCode != 0 {
+		msg := resp.ErrorMessage
+		if msg == "" {
+			msg = "(no error message)"
+		}
+		return fmt.Errorf("router: %s failed: status=%d %s", req.Action, resp.StatusCode, msg)
+	}
+	return nil
 }

@@ -1,26 +1,39 @@
 package action
 
 import (
+	"time"
+
 	"github.com/feivpn/feivpn-runtime/internal/logging"
+	"github.com/feivpn/feivpn-runtime/internal/router"
 )
 
-// Stop performs the graceful shutdown sequence in three phases. Order
-// matters because the privileged router owns the route table — stopping
-// it before --recover would leak hijacked routes.
+// Stop performs the graceful shutdown sequence. Order matters because
+// the privileged router owns the route table — stopping it before
+// `resetRouting` would leak hijacked routes (no default gateway, no
+// DNS).
 //
-//  1. Ask the platform service manager to stop the user-level daemon
-//     (systemctl stop / launchctl bootout). The daemon SHOULD clean
-//     up its own routes/DNS via SIGTERM in the happy path.
-//  2. Run `feivpn --recover` to forcibly restore the original default
-//     route + DNS settings recorded in state.json (via RPC to the
-//     still-running router). Safety net for daemon crashes.
-//  3. Stop the privileged router service. After this the network is
+//  1. Send `resetRouting` IPC to the running router so it restores the
+//     original default route, DNS, IPv6 sysctls, and MSS rule. This
+//     must happen BEFORE we stop either service so the router process
+//     is still alive to handle the request.
+//  2. Ask the platform service manager to stop the user-level daemon.
+//     The daemon SHOULD clean up its own state via SIGTERM in the
+//     happy path.
+//  3. Run `feivpn --recover` to belt-and-braces restore from
+//     state.json in case the daemon crashed before SIGTERM.
+//  4. Stop the privileged router service. After this the network is
 //     guaranteed to be back to the pre-feivpn state.
 //
 // Every step is best-effort; the result reports per-phase status so
 // partial failures are diagnosable.
 func (r *Runner) Stop() (*StopResult, error) {
 	res := &StopResult{}
+
+	// Phase 0 — reset routing (router process must still be alive)
+	if err := router.Reset(5 * time.Second); err != nil {
+		res.Errors = append(res.Errors, "router reset: "+err.Error())
+		logging.Warn("stop: router reset failed", "err", err)
+	}
 
 	// Phase 1 — daemon
 	if err := r.Platform.Stop(); err != nil {
