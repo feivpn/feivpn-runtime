@@ -10,7 +10,7 @@
 # What it does:
 #   1. Detects OS/ARCH and selects a release tarball from GitHub Releases.
 #   2. Downloads the tarball + .sha256 sidecar; verifies SHA256.
-#   3. Lays down /opt/feivpn/{bin,schema,templates,manifest.json} and
+#   3. Lays down /opt/feivpn/{bin,templates,manifest.json} and
 #      /usr/local/bin/feivpnctl.
 #   4. Re-verifies SHAs in manifest.json against /opt/feivpn/bin/*.
 #   5. Prints next-step instructions (it does NOT auto-launch the daemon
@@ -86,10 +86,9 @@ echo "==> sha256 ok"
 # ----- 4. lay down /opt/feivpn -----
 mkdir -p "$PREFIX"
 tar -C "$WORK" -xzf "$WORK/$TAR_NAME"
-mkdir -p "$PREFIX/bin" "$PREFIX/schema" "$PREFIX/templates"
+mkdir -p "$PREFIX/bin" "$PREFIX/templates"
 install -m 0755 "$WORK/pkg/feivpnctl"        "$BIN_LINK"
 cp -R "$WORK/pkg/bin/."        "$PREFIX/bin/"
-cp -R "$WORK/pkg/schema/."     "$PREFIX/schema/"
 cp -R "$WORK/pkg/templates/."  "$PREFIX/templates/"
 cp    "$WORK/pkg/manifest.json" "$PREFIX/manifest.json"
 chmod 0755 "$PREFIX/bin/"*
