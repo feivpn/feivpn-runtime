@@ -69,7 +69,7 @@ type Adapter interface {
 // InstallOptions captures everything the daemon unit/plist needs.
 type InstallOptions struct {
 	BinPath    string // absolute path to the feivpn binary
-	ConfigPath string // -c argument
+	ConfigPath string // -config argument
 	WorkingDir string // typically /opt/feivpn
 	LogFile    string // stdout+stderr destination
 	Args       []string

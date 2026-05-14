@@ -84,7 +84,7 @@ func (d *DarwinAdapter) InstallService(opts InstallOptions) error {
 	}
 	args := opts.Args
 	if opts.ConfigPath != "" {
-		args = append([]string{"-c", opts.ConfigPath}, args...)
+		args = append([]string{"-config", opts.ConfigPath}, args...)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(opts.LogFile), 0o755); err != nil {

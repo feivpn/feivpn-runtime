@@ -101,7 +101,7 @@ func (l *LinuxAdapter) InstallService(opts InstallOptions) error {
 		opts.LogFile = "/var/log/feivpn/feivpn.log"
 	}
 	if opts.ConfigPath != "" {
-		opts.Args = append([]string{"-c", opts.ConfigPath}, opts.Args...)
+		opts.Args = append([]string{"-config", opts.ConfigPath}, opts.Args...)
 	}
 
 	tmpl := template.Must(template.New("unit").Parse(linuxUnitTemplate))

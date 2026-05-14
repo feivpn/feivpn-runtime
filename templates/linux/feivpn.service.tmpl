@@ -8,7 +8,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart={{.BinPath}} -c {{.ConfigPath}} --logLevel info
+ExecStart={{.BinPath}} -config {{.ConfigPath}} --logLevel info
 ExecStopPost={{.BinPath}} --recover
 WorkingDirectory={{.WorkingDir}}
 Restart=on-failure

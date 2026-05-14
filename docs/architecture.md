@@ -74,7 +74,7 @@ sequenceDiagram
   feivpnctl->>feiapi: getconfig --token tok_xxx
   feiapi-->>feivpnctl: [SubscriptionNode...]
   feivpnctl->>feivpnctl: render /etc/feivpn/config.json
-  feivpnctl->>feivpn: --check -c /etc/feivpn/config.json
+  feivpnctl->>feivpn: --check -config /etc/feivpn/config.json
   feivpn-->>feivpnctl: exit 0
   feivpnctl->>Adapter: InstallService(unit/plist)
   feivpnctl->>Adapter: EnableAndStart()

@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
@@ -260,12 +261,53 @@ func (c *Client) GetConfig(subscribeURL, timezone string) ([]SubscriptionNode, e
 	}
 	var env configEnvelope
 	if err := c.runJSON(args, &env); err != nil {
-		return nil, err
+		// Runtime-side subscription fallback (mirrors TS behavior):
+		// if the original subscription host is unreachable, rewrite only
+		// the host part to an API domain and retry once.
+		//
+		// Why here (runtime) instead of feiapi:
+		// - feivpn-runtime treats feiapi as a pinned black-box binary.
+		// - this keeps skill-specific resilience policy in the skill repo.
+		if fallbackURL, ok := rewriteSubscriptionHost(subscribeURL, runtimeSubscriptionFallbackHost()); ok {
+			fallbackArgs := []string{"getconfig", "--url", fallbackURL}
+			if timezone != "" {
+				fallbackArgs = append(fallbackArgs, "--timezone", timezone)
+			}
+			if retryErr := c.runJSON(fallbackArgs, &env); retryErr != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
 	}
 	for i := range env.Nodes {
 		parseAccessKey(&env.Nodes[i])
 	}
 	return env.Nodes, nil
+}
+
+func runtimeSubscriptionFallbackHost() string {
+	// Escape hatch for ops if backend migrates API domains.
+	if v := strings.TrimSpace(os.Getenv("FEIVPN_SUBSCRIPTION_FALLBACK_HOST")); v != "" {
+		return v
+	}
+	// Keep in sync with feivpn-apps/client/go/api/endpoint_manager.go.
+	return "www.xfx365.com"
+}
+
+func rewriteSubscriptionHost(rawURL, fallbackHost string) (string, bool) {
+	if rawURL == "" || fallbackHost == "" {
+		return "", false
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Host == "" {
+		return "", false
+	}
+	if strings.EqualFold(u.Hostname(), fallbackHost) {
+		return "", false
+	}
+	u.Host = fallbackHost
+	return u.String(), true
 }
 
 // GetVersion calls `feiapi getversion --for <platform>`.

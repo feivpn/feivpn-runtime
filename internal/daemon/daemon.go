@@ -59,7 +59,7 @@ type ConnInfo struct {
 	Reach    bool   `json:"reach"`
 }
 
-// Check runs `feivpn --check -c <config>`. A nil error means the config
+// Check runs `feivpn --check -config <config>`. A nil error means the config
 // is sane and the daemon is launchable; a non-nil error is a code +
 // message pulled from the daemon's stdout/stderr.
 func (c *Client) Check(configPath string) error {
@@ -67,7 +67,7 @@ func (c *Client) Check(configPath string) error {
 	if err != nil {
 		return err
 	}
-	res, err := binmgr.Spawn(bin, []string{"--check", "-c", configPath}, nil)
+	res, err := binmgr.Spawn(bin, []string{"--check", "-config", configPath}, nil)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (c *Client) SpawnDetached(a StartArgs) (int, error) {
 	}
 	args := []string{}
 	if a.ConfigPath != "" {
-		args = append(args, "-c", a.ConfigPath)
+		args = append(args, "-config", a.ConfigPath)
 	}
 	if a.TunName != "" {
 		args = append(args, "--tunName", a.TunName)
