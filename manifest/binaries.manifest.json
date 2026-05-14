@@ -85,14 +85,36 @@
       "SHA must match because it's the same file on disk."
     ],
     "upstream": "feivpn/feivpn-apps",
-    "tag":      "router-v0.1.0",
-    "version":  "0.1.0",
-    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.0",
+    "tag":      "router-v0.1.1",
+    "version":  "0.1.1",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.1",
+    "$changelog_v0_1_1": [
+      "Linux: switch route hijack to policy-based routing (PBR).",
+      "  Old behavior (v0.1.0): delete every default route in main table",
+      "    and replace with `default via 10.0.85.2 dev feivpn-tun1`. This",
+      "    blackholed every existing TCP session (incl. the operator's",
+      "    own SSH) the moment configureRouting was acknowledged.",
+      "  New behavior: leave main table untouched. Add `default via",
+      "    10.0.85.2 dev feivpn-tun1` to private table 13579 + install",
+      "    `ip rule add not fwmark 0x2333 lookup 13579 priority 29870`.",
+      "    The fwmark matches DirectMarkValue in the Go daemon's",
+      "    direct_dialer_linux.go so the daemon's outbound trojan socket",
+      "    falls through to the physical NIC.",
+      "Linux: preserve inbound TCP via iptables CONNMARK (mangle table).",
+      "  INPUT  -i <eth>  -j CONNMARK --set-mark 0x2333",
+      "  OUTPUT -m connmark --mark 0x2333 -j MARK --set-mark 0x2333",
+      "  Reply packets for SSH / locally-hosted services keep flowing",
+      "  out the physical interface even after the policy rule flips on.",
+      "Linux: only the linux-amd64 binary is rebuilt in this release;",
+      "  linux-arm64 / darwin-universal still ship the v0.1.0 codepath.",
+      "  They will be rebuilt the next time the build pipeline runs on",
+      "  a host that has docker linux/arm64 / a macOS toolchain."
+    ],
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feivpn-router-linux-amd64",
-        "sha256": "85d705d5bc88de3943ca3b78d1c22d687689f53e73965dc182eaae1c1a8061a3",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.0/feivpn-router-linux-amd64.tar.gz"
+        "sha256": "2294807dd0e1ec9598318678e8bd7c7e8b388902a93b6a7982d5b96db42c3b37",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.1/feivpn-router-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feivpn-router-linux-arm64",
