@@ -85,9 +85,28 @@
       "SHA must match because it's the same file on disk."
     ],
     "upstream": "feivpn/feivpn-apps",
-    "tag":      "router-v0.1.1",
-    "version":  "0.1.1",
-    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.1",
+    "tag":      "router-v0.1.2",
+    "version":  "0.1.2",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.2",
+    "$changelog_v0_1_2": [
+      "Linux: close the CONNMARK race that could still drop SSH on the",
+      "  very first ensure-ready after install. v0.1.1's CONNMARK rules",
+      "  only stamp a conntrack entry when an inbound packet hits INPUT,",
+      "  so any outbound packet sshd emits in the few milliseconds before",
+      "  the first client ACK lands would route into the tunnel and the",
+      "  client would tear the connection down before recovery.",
+      "Linux: routeThroughOutline() now snapshots /proc/net/tcp at hijack",
+      "  time and pre-installs `<remote>/32 via <gw> dev <eth> table 13579`",
+      "  for every ESTABLISHED TCP peer. Even before any conntrack mark",
+      "  exists, the very first server-originated packet to one of those",
+      "  peers finds a /32 in the private table and stays on the physical",
+      "  NIC. CONNMARK continues to handle new inbound connections after",
+      "  the cutover.",
+      "Linux: routeDirectly() / resetFailRoutingAttempt() / EmergencyCleanup",
+      "  cleanup paths drop the /32 entries explicitly (disablePolicyRouting",
+      "  flushes the whole table anyway, but the explicit removal keeps the",
+      "  in-memory bookkeeping correct)."
+    ],
     "$changelog_v0_1_1": [
       "Linux: switch route hijack to policy-based routing (PBR).",
       "  Old behavior (v0.1.0): delete every default route in main table",
@@ -113,8 +132,8 @@
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feivpn-router-linux-amd64",
-        "sha256": "2294807dd0e1ec9598318678e8bd7c7e8b388902a93b6a7982d5b96db42c3b37",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.1/feivpn-router-linux-amd64.tar.gz"
+        "sha256": "a513f987ed1a7df435e3c3d51771665f9f503b37b34c6af869bfc0c2f8676d55",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.2/feivpn-router-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feivpn-router-linux-arm64",
