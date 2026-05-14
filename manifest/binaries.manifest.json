@@ -107,9 +107,44 @@
       "SHA must match because it's the same file on disk."
     ],
     "upstream": "feivpn/feivpn-apps",
-    "tag":      "router-v0.1.5",
-    "version":  "0.1.5",
-    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.5",
+    "tag":      "router-v0.1.6",
+    "version":  "0.1.6",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.6",
+    "$changelog_v0_1_6": [
+      "Linux: fix complete TCP lockout that surfaced in router-v0.1.5 once",
+      "  FakeIP DNS started returning synthetic IPs for every domain.",
+      "  Symptom: nslookup returned 198.18.0.X correctly but every curl /",
+      "  TCP connect through the tunnel hung until timeout. The DNS half",
+      "  of the loop worked because of configureDirectDNSBypass, the TCP",
+      "  half didn't because the proxy server's /32 lived ONLY in the",
+      "  main routing table.",
+      "Root cause: createRouteforOutlineServer() installed",
+      "  '<proxyIP>/32 via <gw>' into the main table only. After",
+      "  enablePolicyRouting() raised `ip rule … priority 29870 not fwmark",
+      "  0x2333 lookup 13579`, every locally-originated TCP socket the Go",
+      "  daemon opened to the proxy hit table 13579 first (priority 29870",
+      "  < main's 32766), found `default via <tunRouter> dev <tun>`, was",
+      "  routed back into the tunnel, picked up by lwIP, dialed back out",
+      "  to the proxy IP again — infinite loop. The Go daemon's electron",
+      "  path uses the default `transport.TCPDialer{}` with no SO_MARK,",
+      "  so SO_MARK could not save us; preserveEstablishedConnections()",
+      "  also explicitly excluded outlineServerIP under the (now-incorrect)",
+      "  assumption that the main-table entry was sufficient.",
+      "Fix: createRouteforOutlineServer() now installs the proxy /32",
+      "  bypass into BOTH the main table AND PBR table 13579 (mirrors",
+      "  configureDirectDNSBypass, which got the same treatment in",
+      "  router-v0.1.5). Uses `replace` so a stale entry from a crashed",
+      "  instance is overwritten. Failure to install in the PBR table",
+      "  is fatal — without it the tunnel literally cannot route a single",
+      "  byte. deleteOutlineServerRouting() now removes the entry from",
+      "  both tables, tolerating ESRCH the same way",
+      "  cleanupPreservedConnections / cleanupDirectDNSBypass do.",
+      "preserveEstablishedConnections() no longer erases outlineServerIP",
+      "  from the snapshot — the explicit /32 install in",
+      "  createRouteforOutlineServer is the source of truth, and the",
+      "  snapshot's `replace` is idempotent. The misleading 'main table",
+      "  already has it' comment is rewritten to reflect PBR reality."
+    ],
     "$changelog_v0_1_5": [
       "Linux: align DNS topology with macOS / Windows / iOS / Android by",
       "  switching /etc/resolv.conf from 'nameserver 9.9.9.9' to",
@@ -216,8 +251,8 @@
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feivpn-router-linux-amd64",
-        "sha256": "83757e2e70b315b241bae0222988f3b8d39683828a3c8fdad3f18bc576a82334",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.5/feivpn-router-linux-amd64.tar.gz"
+        "sha256": "401ab5ca0146b16679a3b462d31ef4b9428342d5c3377bc4309e60c1daf6fb2b",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.6/feivpn-router-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feivpn-router-linux-arm64",
