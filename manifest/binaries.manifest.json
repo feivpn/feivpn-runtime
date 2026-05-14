@@ -15,57 +15,57 @@
   "manifest_version": 1,
   "feivpn": {
     "upstream": "feivpn/feivpn-apps",
-    "tag":      "daemon-v0.0.0-PLACEHOLDER",
-    "version":  "0.0.0-PLACEHOLDER",
-    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/daemon-v0.0.0-PLACEHOLDER",
+    "tag":      "daemon-v0.1.0",
+    "version":  "0.1.0",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/daemon-v0.1.0",
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feivpn-linux-amd64",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.0.0-PLACEHOLDER/feivpn-linux-amd64.tar.gz"
+        "sha256": "5be150412e11bc38db77819ddb6e31064377a25ae291298aab32c2c77049b2de",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.1.0/feivpn-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feivpn-linux-arm64",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.0.0-PLACEHOLDER/feivpn-linux-arm64.tar.gz"
+        "sha256": "39f3378aae976437bb78decfbbe7fc394832e754020b141ef89513a8bee9ac60",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.1.0/feivpn-linux-arm64.tar.gz"
       },
       "darwin-arm64": {
         "path":   "bin/feivpn-darwin-arm64",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.0.0-PLACEHOLDER/feivpn-darwin-arm64.tar.gz"
+        "sha256": "ba0b8ba2207ce904f8e795ed219b2ecb7a7fda2fd1255aa891bde8ee1691ffb3",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.1.0/feivpn-darwin-arm64.tar.gz"
       },
       "darwin-amd64": {
         "path":   "bin/feivpn-darwin-amd64",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.0.0-PLACEHOLDER/feivpn-darwin-amd64.tar.gz"
+        "sha256": "7f427567f3bd05030c761aa53b5b0fbe33c3bdb5c5de2df5c984a008c5e4a7cd",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.1.0/feivpn-darwin-amd64.tar.gz"
       }
     }
   },
   "feiapi": {
     "upstream": "feivpn/feivpn-apps",
-    "tag":      "api-v0.0.0-PLACEHOLDER",
-    "version":  "0.0.0-PLACEHOLDER",
-    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/api-v0.0.0-PLACEHOLDER",
+    "tag":      "api-v0.1.0",
+    "version":  "0.1.0",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/api-v0.1.0",
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feiapi-linux-amd64",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.0.0-PLACEHOLDER/feiapi-linux-amd64.tar.gz"
+        "sha256": "0f4266d68194f8f4634dbb6a8a5056fd1087d5c9c6f725eb73988c5de6dd86b0",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.0/feiapi-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feiapi-linux-arm64",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.0.0-PLACEHOLDER/feiapi-linux-arm64.tar.gz"
+        "sha256": "481fd8946a72d50eca3b87875ccd97c2fb27dbc9f69ffafd1b2fed9a13a2ffbd",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.0/feiapi-linux-arm64.tar.gz"
       },
       "darwin-arm64": {
         "path":   "bin/feiapi-darwin-arm64",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.0.0-PLACEHOLDER/feiapi-darwin-arm64.tar.gz"
+        "sha256": "63989f03040b64e52bd4a03a90a0cf5ab574e9be5806dc541a9f6e87f1e6b006",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.0/feiapi-darwin-arm64.tar.gz"
       },
       "darwin-amd64": {
         "path":   "bin/feiapi-darwin-amd64",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.0.0-PLACEHOLDER/feiapi-darwin-amd64.tar.gz"
+        "sha256": "13bef7cc73864f8f4880924f718781e47ce4d7f98f0cb9128190ab2dd66fc771",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.0/feiapi-darwin-amd64.tar.gz"
       }
     }
   },
@@ -85,29 +85,29 @@
       "SHA must match because it's the same file on disk."
     ],
     "upstream": "feivpn/feivpn-apps",
-    "tag":      "router-v0.0.0-PLACEHOLDER",
-    "version":  "0.0.0-PLACEHOLDER",
-    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.0.0-PLACEHOLDER",
+    "tag":      "router-v0.1.0",
+    "version":  "0.1.0",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.0",
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feivpn-router-linux-amd64",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.0.0-PLACEHOLDER/feivpn-router-linux-amd64.tar.gz"
+        "sha256": "85d705d5bc88de3943ca3b78d1c22d687689f53e73965dc182eaae1c1a8061a3",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.0/feivpn-router-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feivpn-router-linux-arm64",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.0.0-PLACEHOLDER/feivpn-router-linux-arm64.tar.gz"
+        "sha256": "300bd53f4e681b156e3c8f7c584aaa40622b1fccfe6ffc44c12913829c0ee557",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.0/feivpn-router-linux-arm64.tar.gz"
       },
       "darwin-arm64": {
         "path":   "bin/feivpn-router-darwin-universal",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.0.0-PLACEHOLDER/feivpn-router-darwin-universal.tar.gz"
+        "sha256": "7ffebf43c4c81c9a931682105cf9f78cf404b7b43c712b63908e8a7c66be40c9",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.0/feivpn-router-darwin-universal.tar.gz"
       },
       "darwin-amd64": {
         "path":   "bin/feivpn-router-darwin-universal",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.0.0-PLACEHOLDER/feivpn-router-darwin-universal.tar.gz"
+        "sha256": "7ffebf43c4c81c9a931682105cf9f78cf404b7b43c712b63908e8a7c66be40c9",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.0/feivpn-router-darwin-universal.tar.gz"
       }
     }
   }

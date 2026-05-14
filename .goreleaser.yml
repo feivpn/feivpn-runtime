@@ -24,8 +24,12 @@ before:
     - go mod tidy
     - ./scripts/verify-bins.sh
 
+# GoReleaser v2 removed the per-OS `goos:` filter on archives. To still get
+# one archive-recipe per OS (so the `files:` templates can reference per-OS
+# helper binaries cleanly), we split the feivpnctl build into a linux-only
+# and a darwin-only build and bind each archive to its matching build.
 builds:
-  - id: feivpnctl
+  - id: feivpnctl-linux
     main: ./cmd/feivpnctl
     binary: feivpnctl
     env:
@@ -33,26 +37,38 @@ builds:
     ldflags:
       - -s -w
       - -X main.version={{ .Version }}
-    goos:    [linux, darwin]
+    goos:    [linux]
+    goarch:  [amd64, arm64]
+  - id: feivpnctl-darwin
+    main: ./cmd/feivpnctl
+    binary: feivpnctl
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+    goos:    [darwin]
     goarch:  [amd64, arm64]
 
 archives:
   # Linux: feivpn-router ships per-arch (linux-amd64 / linux-arm64).
   - id: tarball-linux
-    builds: [feivpnctl]
-    goos: [linux]
+    ids: [feivpnctl-linux]
     name_template: "feivpn-runtime-{{ .Os }}-{{ .Arch }}"
     formats: [tar.gz]
     wrap_in_directory: pkg
+    # NOTE: in GoReleaser v2 `src:` is templated but `dst:` is taken
+    # literally (this changed from v1). When `dst:` is omitted the file
+    # is placed at its `src` path inside the archive, which is exactly
+    # what we want — so we simply drop `dst:`.
     files:
       - src: bin/feivpn-{{ .Os }}-{{ .Arch }}
-        dst: bin/feivpn-{{ .Os }}-{{ .Arch }}
       - src: bin/feiapi-{{ .Os }}-{{ .Arch }}
-        dst: bin/feiapi-{{ .Os }}-{{ .Arch }}
       - src: bin/feivpn-router-{{ .Os }}-{{ .Arch }}
-        dst: bin/feivpn-router-{{ .Os }}-{{ .Arch }}
-      - src: templates
-        dst: templates
+      - src: templates/**/*
+      # Rename binaries.manifest.json → manifest.json at the archive root.
+      # `dst:` is taken literally (NOT templated) in v2, but a static path
+      # is fine here.
       - src: manifest/binaries.manifest.json
         dst: manifest.json
       - LICENSE
@@ -64,20 +80,15 @@ archives:
   # darwin-arm64 and darwin-amd64 tarballs include the same router file;
   # install.sh symlinks it to the stable name.
   - id: tarball-darwin
-    builds: [feivpnctl]
-    goos: [darwin]
+    ids: [feivpnctl-darwin]
     name_template: "feivpn-runtime-{{ .Os }}-{{ .Arch }}"
     formats: [tar.gz]
     wrap_in_directory: pkg
     files:
       - src: bin/feivpn-{{ .Os }}-{{ .Arch }}
-        dst: bin/feivpn-{{ .Os }}-{{ .Arch }}
       - src: bin/feiapi-{{ .Os }}-{{ .Arch }}
-        dst: bin/feiapi-{{ .Os }}-{{ .Arch }}
       - src: bin/feivpn-router-darwin-universal
-        dst: bin/feivpn-router-darwin-universal
-      - src: templates
-        dst: templates
+      - src: templates/**/*
       - src: manifest/binaries.manifest.json
         dst: manifest.json
       - LICENSE
@@ -85,9 +96,15 @@ archives:
       - SKILL.md
 
 checksum:
-  name_template: "checksums.txt"
+  # split: true emits one file per archive named "<archive>.sha256",
+  # which is exactly what scripts/install.sh expects (it downloads
+  # "<tarball>.sha256" alongside the tarball). The name_template here
+  # only affects the legacy aggregated checksums file (which we don't
+  # ship), but we still keep it unique-per-artifact so GoReleaser
+  # doesn't warn about duplicate artifact names.
+  name_template: "{{ .ArtifactName }}.sha256"
   algorithm: sha256
-  split: true               # one .sha256 per archive (install.sh expects this)
+  split: true
 
 snapshot:
   version_template: "{{ incpatch .Version }}-snapshot"
