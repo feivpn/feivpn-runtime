@@ -83,15 +83,41 @@ if [[ "$EXPECTED" != "$ACTUAL" ]]; then
 fi
 echo "==> sha256 ok"
 
-# ----- 4. lay down /opt/feivpn -----
+# ----- 4. stop running services so we can overwrite live binaries -----
+# Linux refuses to write to a binary that is currently being executed
+# (ETXTBSY / "Text file busy"). Stop both daemon and router up-front
+# rather than failing mid-copy with a half-installed system. Best-effort
+# on systemd hosts; silently skip if systemctl is missing.
+if [[ "$OS" == "linux" ]] && command -v systemctl >/dev/null 2>&1; then
+  for unit in feivpn.service feivpn-router.service; do
+    if systemctl is-active --quiet "$unit"; then
+      echo "==> stopping $unit before upgrade"
+      systemctl stop "$unit" || true
+    fi
+  done
+fi
+# macOS: best-effort bootout of LaunchDaemons so kill+rewrite is atomic.
+if [[ "$OS" == "darwin" ]] && command -v launchctl >/dev/null 2>&1; then
+  for label in org.feivpn.daemon org.feivpn.router; do
+    launchctl bootout "system/$label" >/dev/null 2>&1 || true
+  done
+fi
+
+# ----- 5. lay down /opt/feivpn -----
 mkdir -p "$PREFIX"
 tar -C "$WORK" -xzf "$WORK/$TAR_NAME"
 mkdir -p "$PREFIX/bin" "$PREFIX/templates"
 install -m 0755 "$WORK/pkg/feivpnctl"        "$BIN_LINK"
-cp -R "$WORK/pkg/bin/."        "$PREFIX/bin/"
+# Use `install` instead of `cp -R` so each binary is written via a
+# create+rename, sidestepping ETXTBSY on hosts that race the previous
+# stop step (e.g. systemd auto-restart kicking back in mid-copy).
+for src in "$WORK/pkg/bin/"*; do
+  [[ -e "$src" ]] || continue
+  name=$(basename "$src")
+  install -m 0755 "$src" "$PREFIX/bin/$name"
+done
 cp -R "$WORK/pkg/templates/."  "$PREFIX/templates/"
 cp    "$WORK/pkg/manifest.json" "$PREFIX/manifest.json"
-chmod 0755 "$PREFIX/bin/"*
 
 # Make linux/darwin binaries discoverable under stable names too.
 # NOTE: feivpn-router on macOS ships as a single Universal Binary
@@ -113,7 +139,7 @@ case "$PLAT" in
     ;;
 esac
 
-# ----- 5. verify -----
+# ----- 6. verify -----
 echo "==> verifying installed binaries against manifest"
 "$BIN_LINK" --version >/dev/null
 echo
