@@ -83,6 +83,57 @@ if [[ "$EXPECTED" != "$ACTUAL" ]]; then
 fi
 echo "==> sha256 ok"
 
+# ----- 3.5. quiet sudo's "unable to resolve host" warning -----
+#
+# On stock cloud images (especially the random-UUID-hostname kind that
+# Hetzner / Vultr / OVH hand out, e.g. `019d8c6c-64c6-...`) the system
+# hostname has no corresponding entry in /etc/hosts and DNS obviously
+# can't answer either. Every `sudo` invocation then prints
+#
+#   sudo: unable to resolve host <hostname>: Temporary failure in name
+#         resolution
+#
+# which is harmless but noisy and obscures real errors in our installer
+# / `feivpnctl` output. Patch /etc/hosts ourselves: this is exactly
+# what cloud-init would have done if it had been configured properly.
+ensure_hostname_in_hosts() {
+  # macOS handles this via SystemConfiguration; skip there.
+  [[ "$OS" == "linux" ]] || return 0
+
+  local short_host fqdn entry
+  short_host=$(hostname -s 2>/dev/null || hostname 2>/dev/null || true)
+  [[ -n "$short_host" ]] || return 0
+  fqdn=$(hostname -f 2>/dev/null || echo "$short_host")
+
+  # If the host already resolves (via /etc/hosts, NIS, working DNS, …)
+  # leave it alone. nss_files runs before nss_dns by default so a
+  # pre-existing /etc/hosts entry will match here even when the
+  # tunnel-hijacked /etc/resolv.conf can't answer.
+  if getent hosts "$short_host" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # Refuse if we somehow can't write /etc/hosts (read-only rootfs,
+  # immutable bit, weird container, …). Better to skip silently than
+  # to abort a working install over a cosmetic warning.
+  [[ -w /etc/hosts ]] || return 0
+
+  # Use 127.0.1.1 (the Debian/Ubuntu convention for the host's own
+  # name) so we don't collide with 127.0.0.1's "localhost" entry. If
+  # `hostname -f` gave us a real FQDN, keep both forms on the same
+  # line so `gethostbyname(fqdn)` and `gethostbyname(short)` both
+  # succeed.
+  if [[ "$fqdn" != "$short_host" && -n "$fqdn" ]]; then
+    entry="127.0.1.1 $fqdn $short_host"
+  else
+    entry="127.0.1.1 $short_host"
+  fi
+
+  echo "==> patching /etc/hosts so sudo stops complaining ($entry)"
+  printf '%s\n' "$entry" >> /etc/hosts
+}
+ensure_hostname_in_hosts
+
 # ----- 4. stop running services so we can overwrite live binaries -----
 # Linux refuses to write to a binary that is currently being executed
 # (ETXTBSY / "Text file busy"). Stop both daemon and router up-front
