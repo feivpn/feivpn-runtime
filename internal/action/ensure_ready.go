@@ -159,18 +159,16 @@ func (r *Runner) renderDaemonConfig() (string, error) {
 		return "", err
 	}
 
+	// Important: feivpn --check/--config expects the same JSON shape as
+	// the runtime -client payload consumed by outline.ClientConfig.New(),
+	// i.e. a "client config" rooted at transport descriptors.
+	//
+	// The access key itself (ss:// / trojan:// / vless:// / vmess:// / anytls://)
+	// is the canonical transport descriptor in FeiVPN; wrapping it as
+	// {"transport":"<uri>"} matches parse.go's legacy URL path and is accepted
+	// by both --check and normal startup.
 	cfg := map[string]any{
-		"schema_version": 1,
-		"mode":           orDefault(r.Profile.Mode, "global"),
-		"server":         node.Server,
-		"port":           node.Port,
-		"protocol":       node.Protocol,
-		"token":          node.Token,
-		"method":         node.Method,
-		"name":           node.Name,
-		"tun_name":       orDefault(r.Profile.TunName, defaultTunName()),
-		"tun_addr":       orDefault(r.Profile.TunAddr, "10.111.222.1/24"),
-		"log_level":      orDefault(r.Profile.LogLevel, "info"),
+		"transport": node.AccessKey,
 	}
 	raw, _ := json.MarshalIndent(cfg, "", "  ")
 	if err := os.MkdirAll(filepath.Dir(r.Paths.ConfigFile), 0o755); err != nil {
