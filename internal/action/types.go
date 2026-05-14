@@ -12,6 +12,8 @@
 package action
 
 import (
+	"time"
+
 	"github.com/feivpn/feivpn-runtime/internal/binmgr"
 	"github.com/feivpn/feivpn-runtime/internal/config"
 	"github.com/feivpn/feivpn-runtime/internal/daemon"
@@ -37,6 +39,23 @@ type Runner struct {
 	Platform platform.Adapter
 	Profile  *config.Profile
 	Paths    Paths
+
+	// SkipRouting suppresses the configureRouting IPC call in
+	// EnsureReady. The daemon + router services are still started
+	// (so `feivpnctl status` can verify they came up cleanly), but
+	// the host's routing table and DNS are NOT touched. Use this on
+	// remote hosts where you need to safely test the install before
+	// flipping the box into VPN mode and risking SSH lockout.
+	SkipRouting bool
+
+	// ProbeTarget is the "host:port" the post-configureRouting
+	// connectivity probe dials through the just-hijacked TUN. If the
+	// dial fails inside ProbeTimeout, EnsureReady automatically calls
+	// router.Reset() to restore the original routes BEFORE the user
+	// is locked out. Empty value falls back to a sensible public
+	// endpoint (1.1.1.1:443).
+	ProbeTarget  string
+	ProbeTimeout time.Duration
 }
 
 // Paths captures the canonical install layout. Override via env in tests.

@@ -137,19 +137,41 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 	// Step 6: tell the router to hijack routes / DNS toward the proxy.
 	// The router sat idle until now (it only listens on its socket),
 	// so this is the call that actually flips the system into
-	// VPN-routed mode. Best-effort — failures bubble up via Errors so
-	// status reports them, but we still wait for health afterwards
-	// because the daemon side may still be partially functional.
-	if proxyIP, perr := resolveProxyIP(node); perr == nil && proxyIP != "" {
+	// VPN-routed mode.
+	//
+	// SAFETY (CRITICAL): once configureRouting succeeds the host's
+	// default route points at our TUN. If the daemon's data plane
+	// isn't actually relaying packets — wrong tun device, lwIP
+	// stuck, upstream proxy dead, anything — every outbound packet
+	// is blackholed and the operator's SSH session dies on the next
+	// keepalive. So immediately after the router accepts our
+	// command we open one TCP connection to a public address through
+	// the new default route. If the dial fails inside ProbeTimeout
+	// we call router.Reset() to restore the original routing BEFORE
+	// returning, so the operator never gets locked out.
+	//
+	// Opt-out: SkipRouting=true (CLI: --no-routing). Useful when
+	// debugging the install on a remote host: services come up but
+	// nothing about the network changes.
+	if r.SkipRouting {
+		res.Errors = append(res.Errors, "ROUTING_SKIPPED: --no-routing in effect; system route table left untouched")
+		logging.Warn("ensure_ready: --no-routing set, skipping router.Configure (network NOT switched to tunnel)")
+	} else if proxyIP, perr := resolveProxyIP(node); perr != nil {
+		res.Errors = append(res.Errors, "PROXY_IP_RESOLVE_FAILED: "+perr.Error())
+		logging.Warn("ensure_ready: cannot resolve proxy ip for router", "err", perr)
+	} else if proxyIP != "" {
 		if err := router.Configure(proxyIP, 10*time.Second); err != nil {
 			res.Errors = append(res.Errors, "ROUTER_CONFIGURE_FAILED: "+err.Error())
 			logging.Warn("ensure_ready: router.Configure failed", "proxy_ip", proxyIP, "err", err)
 		} else {
-			logging.Info("ensure_ready: router configured", "proxy_ip", proxyIP)
+			logging.Info("ensure_ready: router configured; verifying tunnel before returning", "proxy_ip", proxyIP)
+			if err := r.verifyTunnelOrRollback(); err != nil {
+				res.Errors = append(res.Errors, "TUNNEL_VERIFY_FAILED_ROLLED_BACK: "+err.Error())
+				logging.Warn("ensure_ready: tunnel verify failed; routing reset to original", "err", err)
+			} else {
+				logging.Info("ensure_ready: tunnel verified, routes hijacked")
+			}
 		}
-	} else if perr != nil {
-		res.Errors = append(res.Errors, "PROXY_IP_RESOLVE_FAILED: "+perr.Error())
-		logging.Warn("ensure_ready: cannot resolve proxy ip for router", "err", perr)
 	}
 
 	// Step 7: wait + health-check (with bounded retries)
@@ -238,6 +260,45 @@ func (r *Runner) renderDaemonConfig() (string, *feiapi.SubscriptionNode, error) 
 		return "", nil, err
 	}
 	return r.Paths.ConfigFile, node, nil
+}
+
+// verifyTunnelOrRollback opens one TCP connection to a public address
+// through the freshly-hijacked default route. If the dial succeeds we
+// know packets actually flow through the tunnel and the routing change
+// is safe to keep. If it fails we IMMEDIATELY ask the router to reset
+// routing — better to have ensure-ready return an error than to leave
+// the operator with a non-functional default route on a remote box.
+//
+// The probe target is intentionally a single fast-failing TCP dial,
+// not an HTTP roundtrip: it must complete within a small budget so
+// the rollback window is measured in seconds, not minutes.
+func (r *Runner) verifyTunnelOrRollback() error {
+	target := strings.TrimSpace(r.ProbeTarget)
+	if target == "" {
+		// 1.1.1.1:443 is reachable from most ASes and answers the
+		// TCP handshake immediately; a dial failure here is a
+		// strong signal that the tunnel isn't carrying packets.
+		target = "1.1.1.1:443"
+	}
+	timeout := r.ProbeTimeout
+	if timeout <= 0 {
+		timeout = 6 * time.Second
+	}
+	conn, err := net.DialTimeout("tcp", target, timeout)
+	if err == nil {
+		_ = conn.Close()
+		return nil
+	}
+	// Tunnel verification failed. Roll back routing so we don't
+	// leave the host with a broken default route. resetRouting
+	// must reach the router process; give it a tighter budget than
+	// configureRouting so we fail fast rather than compound the
+	// outage.
+	if rerr := router.Reset(5 * time.Second); rerr != nil {
+		logging.Warn("ensure_ready: router.Reset (rollback) also failed; manual recovery may be required", "rollback_err", rerr)
+		return fmt.Errorf("dial %s: %w (additionally rollback failed: %v)", target, err, rerr)
+	}
+	return fmt.Errorf("dial %s: %w", target, err)
 }
 
 // resolveProxyIP returns the IP literal the C++ router needs to install

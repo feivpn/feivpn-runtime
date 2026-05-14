@@ -45,6 +45,7 @@ import (
 	"os"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -119,6 +120,9 @@ func newEnsureReadyCmd() *cobra.Command {
 		token         string
 		preferredNode string
 		mode          string
+		noRouting     bool
+		probeTarget   string
+		probeTimeout  time.Duration
 	)
 	cmd := &cobra.Command{
 		Use:   "ensure-ready",
@@ -128,6 +132,9 @@ func newEnsureReadyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			r.SkipRouting = noRouting
+			r.ProbeTarget = probeTarget
+			r.ProbeTimeout = probeTimeout
 			result, err := r.EnsureReady()
 			emit("ensure_ready", result)
 			return err
@@ -136,6 +143,14 @@ func newEnsureReadyCmd() *cobra.Command {
 	cmd.Flags().StringVar(&token, "token", "", "subscription URL (overrides profile + local store)")
 	cmd.Flags().StringVar(&preferredNode, "node", "", "preferred subscription-node name substring")
 	cmd.Flags().StringVar(&mode, "mode", "", "routing mode (default: global)")
+	cmd.Flags().BoolVar(&noRouting, "no-routing", false,
+		"start daemon + router but do NOT hijack the system route table / DNS "+
+			"(safe mode for remote testing; SSH stays on the original gateway)")
+	cmd.Flags().StringVar(&probeTarget, "probe-target", "",
+		"host:port the post-configureRouting tunnel verifier dials "+
+			"(default 1.1.1.1:443; pick something reachable through your tunnel)")
+	cmd.Flags().DurationVar(&probeTimeout, "probe-timeout", 0,
+		"how long the tunnel verifier waits before rolling back routing (default 6s)")
 	return cmd
 }
 
