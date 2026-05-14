@@ -25,13 +25,24 @@ package router
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
+	"os"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/feivpn/feivpn-runtime/internal/binmgr"
 )
+
+// ErrRouterDown is returned by Configure / Reset when the router's IPC
+// endpoint is not reachable in a way that's structurally indistinguishable
+// from "the router service simply isn't running" (ENOENT on the unix
+// socket, ECONNREFUSED on tcp). Callers can errors.Is() against this to
+// downgrade their logging from WARN to INFO during normal stop / upgrade
+// flows where the router has already been taken down.
+var ErrRouterDown = errors.New("router: not running")
 
 // Client wraps a Locator to resolve and describe the router binary.
 type Client struct {
@@ -131,6 +142,9 @@ func roundtrip(req ipcRequest, timeout time.Duration) error {
 	dialer := net.Dialer{Timeout: timeout}
 	conn, err := dialer.Dial(network, addr)
 	if err != nil {
+		if isRouterDown(err) {
+			return ErrRouterDown
+		}
 		return fmt.Errorf("router: dial %s/%s: %w", network, addr, err)
 	}
 	defer conn.Close()
@@ -167,4 +181,30 @@ func roundtrip(req ipcRequest, timeout time.Duration) error {
 		return fmt.Errorf("router: %s failed: status=%d %s", req.Action, resp.StatusCode, msg)
 	}
 	return nil
+}
+
+// isRouterDown returns true when the dial error indicates the router
+// service is not currently listening — i.e. ENOENT (unix socket file
+// missing) or ECONNREFUSED (port closed). These are structurally
+// equivalent to "router process is gone" and callers should treat them
+// as soft failures rather than alarms.
+func isRouterDown(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, syscall.ENOENT) || errors.Is(err, syscall.ECONNREFUSED) ||
+		errors.Is(err, os.ErrNotExist) {
+		return true
+	}
+	// net.OpError wraps syscall errors via SyscallError; errors.Is walks
+	// the chain so the check above usually suffices, but some net stacks
+	// surface only the message — fall back to OpError inspection.
+	var op *net.OpError
+	if errors.As(err, &op) && op.Err != nil {
+		var sce *os.SyscallError
+		if errors.As(op.Err, &sce) {
+			return errors.Is(sce.Err, syscall.ENOENT) || errors.Is(sce.Err, syscall.ECONNREFUSED)
+		}
+	}
+	return false
 }

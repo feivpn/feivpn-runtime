@@ -107,9 +107,26 @@
       "SHA must match because it's the same file on disk."
     ],
     "upstream": "feivpn/feivpn-apps",
-    "tag":      "router-v0.1.3",
-    "version":  "0.1.3",
-    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.3",
+    "tag":      "router-v0.1.4",
+    "version":  "0.1.4",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.4",
+    "$changelog_v0_1_4": [
+      "Further router.log noise reduction. No behavioral change.",
+      "Demote 'caught signal 15' (SIGTERM) and 'caught signal 2' (SIGINT)",
+      "  shutdown lines from WARN to INFO — these are the standard",
+      "  systemd / `kill` shutdown signals, not anomalies. SIGHUP and",
+      "  any other signal stay at WARN.",
+      "Demote 'tun device feivpn-tun1 already exists' line from WARN to",
+      "  INFO and rewrite the message: in the feivpn-runtime topology",
+      "  the Go daemon owns the TUN, so seeing it on a router restart is",
+      "  the structurally expected case (the kernel keeps the device",
+      "  alive while the daemon holds an FD on it).",
+      "cleanupPreservedConnections(): suppress the 'No such process' /",
+      "  ENOENT / 'Cannot find' branch when removing /32 bypass routes.",
+      "  disablePolicyRouting() flushes the entire private table first,",
+      "  so individual deletes always race against an already-empty",
+      "  table. Real failures still surface as WARN."
+    ],
     "$changelog_v0_1_3": [
       "Cosmetics + log noise reduction. No behavioral change to routing,",
       "DNS, or connection preservation — purely a router.log readability",
@@ -178,8 +195,8 @@
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feivpn-router-linux-amd64",
-        "sha256": "9897abc84c78fadacc16fdf456d550560bbb605e4d4276fc7606c5a3fc2e83bd",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.3/feivpn-router-linux-amd64.tar.gz"
+        "sha256": "7ccd641585f88366a8fe9d1cdd622a3aea9a3e18993de20a9ce9fa972c121cb4",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.4/feivpn-router-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feivpn-router-linux-arm64",

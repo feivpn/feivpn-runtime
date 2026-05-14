@@ -1,6 +1,7 @@
 package action
 
 import (
+	"errors"
 	"time"
 
 	"github.com/feivpn/feivpn-runtime/internal/logging"
@@ -29,10 +30,23 @@ import (
 func (r *Runner) Stop() (*StopResult, error) {
 	res := &StopResult{}
 
-	// Phase 0 — reset routing (router process must still be alive)
+	// Phase 0 — reset routing (router process must still be alive).
+	//
+	// During `upgrade` / `restart` Stop() is called from a clean shell
+	// where the router service may already be stopped (e.g. previous
+	// stop, fresh install, manual systemctl stop). The unix socket is
+	// then absent and dial() returns ENOENT, which router.Reset surfaces
+	// as the typed sentinel ErrRouterDown. Treat that as "nothing to
+	// do" rather than spamming a WARN — the network state is already
+	// clean if the router is down (its SIGTERM handler runs emergency
+	// cleanup).
 	if err := router.Reset(5 * time.Second); err != nil {
-		res.Errors = append(res.Errors, "router reset: "+err.Error())
-		logging.Warn("stop: router reset failed", "err", err)
+		if errors.Is(err, router.ErrRouterDown) {
+			logging.Info("stop: router not running, nothing to reset")
+		} else {
+			res.Errors = append(res.Errors, "router reset: "+err.Error())
+			logging.Warn("stop: router reset failed", "err", err)
+		}
 	}
 
 	// Phase 1 — daemon
