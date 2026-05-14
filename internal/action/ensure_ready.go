@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/feivpn/feivpn-runtime/internal/binmgr"
@@ -66,6 +67,13 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 		WorkingDir: r.Paths.WorkingDir,
 		LogFile:    r.Paths.RouterLogFile,
 	}
+	// Linux feivpn-router requires an explicit unix socket path.
+	if runtime.GOOS == "linux" {
+		routerOpts.Args = []string{
+			"--socket-filename=/var/run/feivpn_controller",
+			"--owning-user-id=-1",
+		}
+	}
 	if err := r.Platform.InstallRouterService(routerOpts); err != nil {
 		return appendErr(res, fmt.Errorf("ROUTER_INSTALL_FAILED: %w", err))
 	}
@@ -77,11 +85,21 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 	// declares Requires=feivpn-router.service so a reboot replays this
 	// ordering even when feivpnctl is not in the loop.
 	binPath, _ := r.Daemon.BinaryPath()
+	// Runtime mode must pass the client JSON via -client. The -config flag is
+	// check-mode only in the daemon binary and does not boot a live session.
+	configRaw, err := os.ReadFile(configPath)
+	if err != nil {
+		return appendErr(res, fmt.Errorf("CONFIG_READ_FAILED: %w", err))
+	}
+	clientJSON := strings.TrimSpace(string(configRaw))
+	if clientJSON == "" {
+		return appendErr(res, fmt.Errorf("CONFIG_EMPTY: rendered daemon config is empty"))
+	}
 	installOpts := platform.InstallOptions{
 		BinPath:    binPath,
-		ConfigPath: configPath,
 		WorkingDir: r.Paths.WorkingDir,
 		LogFile:    r.Paths.LogFile,
+		Args:       []string{"-client", clientJSON},
 	}
 	if r.Profile.LogLevel != "" {
 		installOpts.Args = append(installOpts.Args, "--logLevel", r.Profile.LogLevel)
