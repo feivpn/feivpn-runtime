@@ -101,11 +101,11 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 
 	// Step 7: assemble report
 	res.Checks = CheckReport{
-		Process:      health.Running,
-		Tun:          health.Tun.Up,
-		Route:        health.Route.HijackedByTun,
-		DNS:          health.DNS.Hijacked,
-		Connectivity: health.Connectivity.Reach,
+		Process:      health.Checks.Process,
+		Tun:          health.Checks.TUN,
+		Route:        health.Checks.Route,
+		DNS:          health.Checks.DNS,
+		Connectivity: health.Checks.Connectivity,
 	}
 	res.Pid = health.Pid
 	res.Tun = health.Tun.Name
@@ -190,7 +190,7 @@ func (r *Runner) waitForHealth(timeout, every time.Duration) (h *daemonHealthAli
 		report, healthErr := r.Daemon.Health()
 		if healthErr == nil && report != nil {
 			last = (*daemonHealthAlias)(report)
-			if last.Running && last.Tun.Up && last.Connectivity.Reach {
+			if last.Checks.Process && last.Checks.TUN && last.Checks.Connectivity {
 				return last, nil
 			}
 		}

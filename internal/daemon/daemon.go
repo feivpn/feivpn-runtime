@@ -26,15 +26,16 @@ func New(loc *binmgr.Locator) *Client { return &Client{loc: loc} }
 // fields feivpnctl currently consumes are modelled; unknown fields are
 // silently dropped by json.Unmarshal.
 type HealthReport struct {
-	Running      bool       `json:"running"`
-	Pid          int        `json:"pid,omitempty"`
-	Version      string     `json:"version,omitempty"`
-	Uptime       int64      `json:"uptime_seconds,omitempty"`
-	Tun          TunInfo    `json:"tun"`
-	Route        RouteInfo  `json:"route"`
-	DNS          DNSInfo    `json:"dns"`
-	Connectivity ConnInfo   `json:"connectivity"`
-	Errors       []string   `json:"errors,omitempty"`
+	Running      bool           `json:"running"`
+	Pid          int            `json:"pid,omitempty"`
+	Version      string         `json:"version,omitempty"`
+	Uptime       int64          `json:"uptime_seconds,omitempty"`
+	Tun          TunInfo        `json:"tun"`
+	Route        RouteInfo      `json:"route"`
+	DNS          DNSInfo        `json:"dns"`
+	EgressIP     string         `json:"egress_ip,omitempty"`
+	Checks       HealthChecks   `json:"checks"`
+	Errors       []string       `json:"errors,omitempty"`
 }
 
 type TunInfo struct {
@@ -44,19 +45,21 @@ type TunInfo struct {
 }
 
 type RouteInfo struct {
-	Default       string `json:"default,omitempty"`
-	HijackedByTun bool   `json:"hijacked_by_tun"`
+	DefaultVia string `json:"default_via,omitempty"`
+	Hijacked   bool   `json:"hijacked"`
 }
 
 type DNSInfo struct {
-	Servers   []string `json:"servers,omitempty"`
-	Hijacked  bool     `json:"hijacked"`
-	Interface string   `json:"interface,omitempty"`
+	Current  []string `json:"current,omitempty"`
+	Hijacked bool     `json:"hijacked"`
 }
 
-type ConnInfo struct {
-	EgressIP string `json:"egress_ip,omitempty"`
-	Reach    bool   `json:"reach"`
+type HealthChecks struct {
+	Process      bool `json:"process"`
+	TUN          bool `json:"tun"`
+	Route        bool `json:"route"`
+	DNS          bool `json:"dns"`
+	Connectivity bool `json:"connectivity"`
 }
 
 // Check runs `feivpn --check -config <config>`. A nil error means the config
