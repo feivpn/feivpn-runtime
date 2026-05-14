@@ -43,29 +43,29 @@
   },
   "feiapi": {
     "upstream": "feivpn/feivpn-apps",
-    "tag":      "api-v0.1.1",
-    "version":  "0.1.1",
-    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/api-v0.1.1",
+    "tag":      "api-v0.1.2",
+    "version":  "0.1.2",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/api-v0.1.2",
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feiapi-linux-amd64",
-        "sha256": "6c146016fc58b9bacd4dc8efba56ea79a99249e29e87cb918afc83cf8981e89f",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.1/feiapi-linux-amd64.tar.gz"
+        "sha256": "b4947050cfc751e1902c459b3e24d98d76216268f3da7a758193ab2819be2d64",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.2/feiapi-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feiapi-linux-arm64",
-        "sha256": "7d8c5c09d311847488f5b3209d1b8185de27d52551c94b11ac8d59a594e5d89f",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.1/feiapi-linux-arm64.tar.gz"
+        "sha256": "6d7dbbd9b759660c140e48a4a467d8f36299709182e9865b5493718d41a6cec3",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.2/feiapi-linux-arm64.tar.gz"
       },
       "darwin-arm64": {
         "path":   "bin/feiapi-darwin-arm64",
-        "sha256": "9e4e9c59f9ba0d57996adfe20cb6fb157af26f1541682d0283bff0662ca1cd4b",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.1/feiapi-darwin-arm64.tar.gz"
+        "sha256": "00e65d650e51ddaefa16e1668a5d222291d7739b928d917919dfc5251afb4436",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.2/feiapi-darwin-arm64.tar.gz"
       },
       "darwin-amd64": {
         "path":   "bin/feiapi-darwin-amd64",
-        "sha256": "fd60ad8b45aa0bf3cdf44ab92f77874f13c691be55820df562471fe8d7157667",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.1/feiapi-darwin-amd64.tar.gz"
+        "sha256": "3f2524f3ca08e64a6c42f2501964bea8238c7f52bcf79c10b142e2a296878729",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.2/feiapi-darwin-amd64.tar.gz"
       }
     }
   },
