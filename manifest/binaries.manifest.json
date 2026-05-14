@@ -107,9 +107,33 @@
       "SHA must match because it's the same file on disk."
     ],
     "upstream": "feivpn/feivpn-apps",
-    "tag":      "router-v0.1.2",
-    "version":  "0.1.2",
-    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.2",
+    "tag":      "router-v0.1.3",
+    "version":  "0.1.3",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.3",
+    "$changelog_v0_1_3": [
+      "Cosmetics + log noise reduction. No behavioral change to routing,",
+      "DNS, or connection preservation — purely a router.log readability",
+      "pass.",
+      "Banner: drop the legacy '[for OutlineVPN Client]' suffix.",
+      "Log strings: rename the user-visible 'outline server / outline",
+      "  gateway / outline proxy / outline DNS server / outline tun",
+      "  interface' lines to 'vpn server / vpn gateway / vpn proxy / vpn",
+      "  DNS server / vpn tun interface'. Internal C++ identifiers are",
+      "  unchanged so source diffs stay small.",
+      "Unix socket group: rename the lookup name from 'outlinevpn' to",
+      "  'feivpn'. Demote the 'no such group on this system' message",
+      "  from WARN to INFO — feivpn-runtime runs every consumer as root",
+      "  via systemd, so the group's absence is the expected case and",
+      "  was producing a false alarm in router.log.",
+      "Network monitor teardown: in the feivpn-runtime topology the Go",
+      "  daemon disconnects the unix socket the moment configureRouting",
+      "  returns. The Start() coroutine cancels the network-monitor",
+      "  awaitable via boost::asio's `||` operator on every healthy",
+      "  session, which used to surface as a WARN ('Operation canceled",
+      "  [system:125]') after every connect. Now caught as",
+      "  operation_aborted / ECANCELED and logged at INFO ('network",
+      "  monitor stopped (client session ended)')."
+    ],
     "$changelog_v0_1_2": [
       "Linux: close the CONNMARK race that could still drop SSH on the",
       "  very first ensure-ready after install. v0.1.1's CONNMARK rules",
@@ -154,8 +178,8 @@
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feivpn-router-linux-amd64",
-        "sha256": "a513f987ed1a7df435e3c3d51771665f9f503b37b34c6af869bfc0c2f8676d55",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.2/feivpn-router-linux-amd64.tar.gz"
+        "sha256": "9897abc84c78fadacc16fdf456d550560bbb605e4d4276fc7606c5a3fc2e83bd",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.3/feivpn-router-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feivpn-router-linux-arm64",
