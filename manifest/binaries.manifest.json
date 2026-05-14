@@ -107,9 +107,30 @@
       "SHA must match because it's the same file on disk."
     ],
     "upstream": "feivpn/feivpn-apps",
-    "tag":      "router-v0.1.4",
-    "version":  "0.1.4",
-    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.4",
+    "tag":      "router-v0.1.5",
+    "version":  "0.1.5",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/router-v0.1.5",
+    "$changelog_v0_1_5": [
+      "Linux: align DNS topology with macOS / Windows / iOS / Android by",
+      "  switching /etc/resolv.conf from 'nameserver 9.9.9.9' to",
+      "  'nameserver 169.254.113.53'. The Go daemon already runs a FakeIP",
+      "  DNS server at 169.254.113.53:53 (see linkLocalDNS in",
+      "  config/outline_dns_intercept.go) — every other platform points",
+      "  the system at it, Linux was the odd one out querying 9.9.9.9",
+      "  through the tunnel. After this bump nslookup returns",
+      "  198.18.0.X (synthetic) just like on Mac/Win, the proxy receives",
+      "  the original hostname (ATYP=Domain), and there is no DNS",
+      "  round-trip through the tunnel before each TCP connect.",
+      "Linux: directDNSServer (the optional public-resolver bypass) is",
+      "  now empty by default — the FakeIP topology routes every DNS",
+      "  query to 169.254.113.53, so a separate /32 bypass for",
+      "  114.114.114.114 just rerouted ordinary DNS off the proxy. The",
+      "  bypass machinery itself is kept in case operators want to opt",
+      "  in to a split-horizon resolver, and was made PBR-correct: it",
+      "  now installs the /32 in BOTH the main routing table and the",
+      "  PBR table 13579 (a main-only entry was bypassed by our",
+      "  priority-29870 ip rule and never matched anything)."
+    ],
     "$changelog_v0_1_4": [
       "Further router.log noise reduction. No behavioral change.",
       "Demote 'caught signal 15' (SIGTERM) and 'caught signal 2' (SIGINT)",
@@ -195,8 +216,8 @@
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feivpn-router-linux-amd64",
-        "sha256": "7ccd641585f88366a8fe9d1cdd622a3aea9a3e18993de20a9ce9fa972c121cb4",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.4/feivpn-router-linux-amd64.tar.gz"
+        "sha256": "83757e2e70b315b241bae0222988f3b8d39683828a3c8fdad3f18bc576a82334",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/router-v0.1.5/feivpn-router-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feivpn-router-linux-arm64",
