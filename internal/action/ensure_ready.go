@@ -1,6 +1,7 @@
 package action
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -91,7 +92,11 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 	if err != nil {
 		return appendErr(res, fmt.Errorf("CONFIG_READ_FAILED: %w", err))
 	}
-	clientJSON := strings.TrimSpace(string(configRaw))
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, configRaw); err != nil {
+		return appendErr(res, fmt.Errorf("CONFIG_COMPACT_FAILED: %w", err))
+	}
+	clientJSON := strings.TrimSpace(compact.String())
 	if clientJSON == "" {
 		return appendErr(res, fmt.Errorf("CONFIG_EMPTY: rendered daemon config is empty"))
 	}

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -102,6 +103,9 @@ func (l *LinuxAdapter) InstallService(opts InstallOptions) error {
 	}
 	if opts.ConfigPath != "" {
 		opts.Args = append([]string{"-config", opts.ConfigPath}, opts.Args...)
+	}
+	for i := range opts.Args {
+		opts.Args[i] = quoteSystemdArg(opts.Args[i])
 	}
 
 	tmpl := template.Must(template.New("unit").Parse(linuxUnitTemplate))
@@ -236,4 +240,13 @@ func systemctl(args ...string) error {
 
 func isNotLoaded(err error) bool {
 	return err != nil && (strings.Contains(err.Error(), "not loaded") || strings.Contains(err.Error(), "could not be found"))
+}
+
+func quoteSystemdArg(v string) string {
+	// systemd performs % specifier expansion in ExecStart. Double it so
+	// literal '%' in access keys / URLs survives as-is.
+	v = strings.ReplaceAll(v, "%", "%%")
+	// Quote to keep one logical argv item even when the value contains
+	// spaces, JSON punctuation, or shell-looking characters.
+	return strconv.Quote(v)
 }
