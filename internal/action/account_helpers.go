@@ -27,8 +27,14 @@ func deviceID() (string, error) {
 
 // applyUserData merges a fresh UserData payload into an Account. Empty
 // fields in UserData do NOT overwrite existing values — that way a
-// partial /user/info response does not erase the subscribe_url we got
-// from the previous /getid.
+// partial /user/info response does not erase the subscribe_url (or
+// AuthData, etc.) we got from the previous /login or /getid.
+//
+// To DROP the named-account session (the `logout` flow), the caller
+// should NOT rely on a "blank UserData" signal — the /user/info
+// endpoint also doesn't echo auth_data — but instead use
+// clearLoggedInIdentity below or call bootstrapAnonymous which writes
+// a fresh empty Account before applying.
 func applyUserData(acc *store.Account, u *feiapi.UserData) {
 	if u == nil {
 		return
@@ -39,10 +45,9 @@ func applyUserData(acc *store.Account, u *feiapi.UserData) {
 	if u.Token != "" {
 		acc.Token = u.Token
 	}
-	// AuthData is treated specially: an empty value means "the server
-	// is reporting an anonymous account", which is exactly what
-	// `logout` wants. We clear AuthData in that case.
-	acc.AuthData = u.AuthData
+	if u.AuthData != "" {
+		acc.AuthData = u.AuthData
+	}
 	if u.SubscribeURL != "" {
 		acc.SubscribeURL = u.SubscribeURL
 	}
@@ -51,10 +56,6 @@ func applyUserData(acc *store.Account, u *feiapi.UserData) {
 	}
 	if e := u.ResolvedEmail(); e != "" {
 		acc.UserEmail = e
-	} else if u.AuthData == "" {
-		// Anonymous account → drop any cached email so the file is
-		// internally consistent with the "logged-out" state.
-		acc.UserEmail = ""
 	}
 	if u.InviteCode != "" {
 		acc.InviteCode = u.InviteCode

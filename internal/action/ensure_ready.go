@@ -14,6 +14,7 @@ import (
 	"github.com/feivpn/feivpn-runtime/internal/platform"
 	"github.com/feivpn/feivpn-runtime/internal/state"
 	"github.com/feivpn/feivpn-runtime/internal/store"
+	"github.com/feivpn/feivpn-runtime/internal/tz"
 )
 
 // EnsureReady is the main bootstrap entry point.
@@ -146,8 +147,10 @@ func (r *Runner) renderDaemonConfig() (string, error) {
 		logging.Info("ensure_ready: using subscribe_url from store", "uuid", acc.UUID, "logged_in", acc.IsLoggedIn())
 	}
 
-	tz, _ := time.Now().Zone()
-	nodes, err := r.Feiapi.GetConfig(subscribeURL, tz)
+	zone := tz.IANA() // IANA name like "Asia/Shanghai"; the server
+	// rejects Go's time.Now().Zone() abbreviations
+	// ("CST", "PST", …) as a query value.
+	nodes, err := r.Feiapi.GetConfig(subscribeURL, zone)
 	if err != nil {
 		return "", fmt.Errorf("SUBSCRIPTION_FETCH_FAILED: %w", err)
 	}
