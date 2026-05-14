@@ -15,14 +15,36 @@
   "manifest_version": 1,
   "feivpn": {
     "upstream": "feivpn/feivpn-apps",
-    "tag":      "daemon-v0.1.0",
-    "version":  "0.1.0",
-    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/daemon-v0.1.0",
+    "tag":      "daemon-v0.1.1",
+    "version":  "0.1.1",
+    "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/daemon-v0.1.1",
+    "$changelog_v0_1_1": [
+      "Linux: --health probeTun no longer requires net-tools (`ifconfig`).",
+      "  v0.1.0 shelled out to `ifconfig <tun>` and on stock Ubuntu cloud",
+      "  images that produced an exec error, so checks.tun stayed false",
+      "  forever and ensure-ready always reported `degraded` even when",
+      "  the tunnel was perfectly healthy. We now read",
+      "  /sys/class/net/<tun>/flags (kernel sysfs, dependency-free) and",
+      "  fall back to `ip link show` and finally `ifconfig` for the macOS",
+      "  / net-tools-installed cases.",
+      "Linux: --health probeDefaultRoute is now PBR-aware. Router v0.1.1+",
+      "  intentionally leaves the main routing table untouched, so the",
+      "  old `default via tunGw` check would always say hijacked=false.",
+      "  We now also inspect `ip route show default table 13579` plus the",
+      "  `ip rule … priority 29870 lookup 13579` entry that the C++",
+      "  router installs; either signal sets route.hijacked=true and",
+      "  reports route.mode=\"pbr\".",
+      "All platforms: --health probeDNS now returns hijacked=true when",
+      "  the live resolvers diverge from the snapshot recorded in",
+      "  state.json's original_dns at daemon startup. Previously it was",
+      "  hard-coded to false, so callers could never tell the router had",
+      "  rewritten /etc/resolv.conf."
+    ],
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feivpn-linux-amd64",
-        "sha256": "5be150412e11bc38db77819ddb6e31064377a25ae291298aab32c2c77049b2de",
-        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.1.0/feivpn-linux-amd64.tar.gz"
+        "sha256": "cd102ee12a3183683530345000dc1767a4482754bd861924db3b4b260837a809",
+        "url":    "https://github.com/feivpn/feivpn-apps/releases/download/daemon-v0.1.1/feivpn-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feivpn-linux-arm64",
