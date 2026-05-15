@@ -415,12 +415,18 @@ func trimErr(b []byte) string {
 	return string(b)
 }
 
-// parseAccessKey best-effort fills the legacy Server/Port/Protocol/Token/
+// ParseAccessKey best-effort fills the legacy Server/Port/Protocol/Token/
 // Method fields from a proxy URL. Supported schemes: ss, trojan, vless,
 // vmess (partial — only host/port; encoded body is opaque), anytls.
 //
 // On parse failure the structured fields are left blank; callers should
 // rely on AccessKey itself when shipping the node to the daemon.
+//
+// Exported so the action layer can re-hydrate nodes that came from the
+// on-disk cache (which only persists Name + AccessKey, not the derived
+// fields).
+func ParseAccessKey(n *SubscriptionNode) { parseAccessKey(n) }
+
 func parseAccessKey(n *SubscriptionNode) {
 	ak := strings.TrimSpace(n.AccessKey)
 	if ak == "" {

@@ -173,9 +173,14 @@ Every action accepts `--json`; we only show stdout shapes here.
 
 ### `feivpnctl ensure-ready`
 
-Idempotent main entry point. Inputs come from (highest priority first):
-`--token` flag → `subscription_token` in
-`/etc/feivpn/feivpnctl.json` → `subscribe_url` in the account file.
+Idempotent main entry point. The `subscribe_url` is always sourced from
+the local account file (auto-bootstrapped via `/getid` on first run);
+profile / CLI flags only override secondary knobs like `--country`,
+`--mode`, `--no-routing`, `--probe-target`, `--probe-timeout`.
+
+`--country` accepts an ISO 3166-1 alpha-2 code (e.g. `HK`, `JP`, `US`).
+Run `feivpnctl countries` first to discover which codes are present in
+the current subscription. Empty → server-default node order.
 
 ```json
 {

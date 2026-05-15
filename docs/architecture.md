@@ -68,10 +68,12 @@ sequenceDiagram
   participant Adapter as Host Adapter
   participant feivpn as Daemon
 
-  Agent->>feivpnctl: ensure-ready --token tok_xxx
-  feivpnctl->>feivpnctl: load /etc/feivpn/feivpnctl.json
+  Agent->>feivpnctl: ensure-ready
+  feivpnctl->>feivpnctl: load /etc/feivpn/feivpnctl.json (optional)
   feivpnctl->>feivpnctl: verify bin/feivpn SHA against manifest
-  feivpnctl->>feiapi: getconfig --token tok_xxx
+  feivpnctl->>feiapi: getid (auto-bootstrap on first run)
+  feiapi-->>feivpnctl: subscribe_url
+  feivpnctl->>feiapi: getconfig --url <subscribe_url>
   feiapi-->>feivpnctl: [SubscriptionNode...]
   feivpnctl->>feivpnctl: render /etc/feivpn/config.json
   feivpnctl->>feivpn: --check -config /etc/feivpn/config.json

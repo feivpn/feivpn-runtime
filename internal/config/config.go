@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/feivpn/feivpn-runtime/internal/feiapi"
 )
@@ -27,14 +28,11 @@ type Profile struct {
 	// the MVP; "rule-based" / "tun-only" are reserved.
 	Mode string `json:"mode" yaml:"mode"`
 
-	// SubscriptionToken authenticates against the backend API.
-	// Sourced from `feiapi getid` -> `info.subscriptionToken`, or
-	// supplied directly by the operator.
-	SubscriptionToken string `json:"subscription_token" yaml:"subscription_token"`
-
-	// PreferredNode is an optional substring match against
-	// SubscriptionNode.Name to pin a specific egress.
-	PreferredNode string `json:"preferred_node,omitempty" yaml:"preferred_node,omitempty"`
+	// PreferredCountry pins the egress country as an ISO 3166-1
+	// alpha-2 code (e.g. "HK", "JP", "US"). Use `feivpnctl countries`
+	// to list the codes available in your subscription. Empty value
+	// means "let the server's default ordering decide".
+	PreferredCountry string `json:"preferred_country,omitempty" yaml:"preferred_country,omitempty"`
 
 	// TunName, TunAddr override defaults (utunN on darwin, fei0 on linux).
 	TunName string `json:"tun_name,omitempty" yaml:"tun_name,omitempty"`
@@ -91,47 +89,35 @@ func Save(path string, p *Profile) error {
 	return os.Rename(tmp, path)
 }
 
-// SelectNode picks a subscription node for this profile. Selection is
-// preferred-name substring → first-available, in that order.
+// SelectNode picks a subscription node for this profile.
+//
+// Selection rules:
+//
+//   - PreferredCountry empty → the first node returned by the
+//     subscription (server-defined order is the de-facto recommendation).
+//   - PreferredCountry set → the first node whose detected country
+//     matches. If no node matches, returns NO_NODES_IN_COUNTRY rather
+//     than silently falling back, so the operator notices that their
+//     pinned country is not actually available.
+//
+// PreferredCountry is normalised case-insensitively against ISO alpha-2.
+// Unknown codes are rejected up front by the CLI; the daemon-side check
+// here is defensive only.
 func (p *Profile) SelectNode(nodes []feiapi.SubscriptionNode) (*feiapi.SubscriptionNode, error) {
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("NO_NODES_AVAILABLE: subscription is empty")
 	}
-	if p.PreferredNode != "" {
-		for i := range nodes {
-			if containsCI(nodes[i].Name, p.PreferredNode) {
-				return &nodes[i], nil
-			}
+	want := strings.ToUpper(strings.TrimSpace(p.PreferredCountry))
+	if want == "" {
+		return &nodes[0], nil
+	}
+	if !feiapi.IsKnownCountry(want) {
+		return nil, fmt.Errorf("INVALID_COUNTRY: %q is not a recognised ISO code; run `feivpnctl countries` to list available options", p.PreferredCountry)
+	}
+	for i := range nodes {
+		if feiapi.DetectCountry(nodes[i].Name) == want {
+			return &nodes[i], nil
 		}
 	}
-	return &nodes[0], nil
-}
-
-func containsCI(haystack, needle string) bool {
-	if len(needle) == 0 {
-		return true
-	}
-	if len(haystack) < len(needle) {
-		return false
-	}
-	for i := 0; i+len(needle) <= len(haystack); i++ {
-		eq := true
-		for j := 0; j < len(needle); j++ {
-			a, b := haystack[i+j], needle[j]
-			if a >= 'A' && a <= 'Z' {
-				a += 32
-			}
-			if b >= 'A' && b <= 'Z' {
-				b += 32
-			}
-			if a != b {
-				eq = false
-				break
-			}
-		}
-		if eq {
-			return true
-		}
-	}
-	return false
+	return nil, fmt.Errorf("NO_NODES_IN_COUNTRY: subscription has no node tagged %s (%s); run `feivpnctl countries` to see what's available", want, feiapi.CountryDisplayName(want))
 }

@@ -1,14 +1,23 @@
 {
   "$comment": [
-    "Example feivpnctl profile. Copy to /etc/feivpn/feivpnctl.json on the",
-    "target host (or pass --config <path> explicitly).",
+    "OPTIONAL profile for feivpnctl. You usually do NOT need this file —",
+    "`feivpnctl ensure-ready` auto-registers the device with the backend",
+    "on first run via /getid and caches the subscribe_url under",
+    "/var/lib/feivpn/account.json.",
     "",
-    "Only `mode` and `subscription_token` are required."
+    "Use this file only when you want to override the auto-bootstrapped",
+    "behavior, e.g.:",
+    "  - pin a specific egress country via `preferred_country`",
+    "    (ISO 3166-1 alpha-2; run `feivpnctl countries` to list options)",
+    "  - change the TUN address (`tun_addr`) when 10.111.222.0/24 collides",
+    "    with your LAN",
+    "  - bump verbosity via `log_level`",
+    "",
+    "Drop the file at /etc/feivpn/feivpnctl.json (or pass --config <path>)."
   ],
   "channel": "stable",
   "mode": "global",
-  "subscription_token": "REPLACE_ME_with_token_from_feiapi_getid",
-  "preferred_node": "",
+  "preferred_country": "",
   "tun_name": "",
   "tun_addr": "10.111.222.1/24",
   "log_level": "info"

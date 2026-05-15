@@ -9,13 +9,13 @@ A grab-bag of operational recipes for `feivpn-runtime` in production.
 curl -fsSL https://raw.githubusercontent.com/feivpn/feivpn-runtime/main/scripts/install.sh \
   | sudo bash
 
-# 2. profile
+# 2. (optional) profile — only needed to override defaults like preferred_country
 sudo install -d -m 0755 /etc/feivpn
 sudo cp /opt/feivpn/templates/config/feivpnctl.example.json \
         /etc/feivpn/feivpnctl.json
-sudo $EDITOR /etc/feivpn/feivpnctl.json   # set subscription_token
+sudo $EDITOR /etc/feivpn/feivpnctl.json
 
-# 3. launch
+# 3. launch (auto-registers the device on first run; no token required)
 sudo feivpnctl ensure-ready --json | tee /tmp/ensure.json
 jq -r .status /tmp/ensure.json    # → "ready"
 ```
@@ -36,7 +36,7 @@ Common causes:
 | `tun: false`                    | Missing `CAP_NET_ADMIN` (Linux) / SIP block (mac)  | Run as root; on macOS approve the TUN driver   |
 | `route: false`                  | `ip route replace default` denied                  | Check `dmesg`, ensure no other VPN is running  |
 | `dns: false`                    | `resolvconf`/`scutil` failure                      | Inspect `/etc/resolv.conf` / `scutil --dns`    |
-| `connectivity.reach: false`     | Subscription node unreachable                      | Try `--node` to pick a different egress        |
+| `connectivity.reach: false`     | Subscription node unreachable                      | Run `feivpnctl countries` then retry with `--country <CC>` |
 
 ## Roll back to the previous version
 

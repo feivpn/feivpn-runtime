@@ -93,6 +93,7 @@ func main() {
 		newRestartCmd(),
 		newUpgradeCmd(),
 		newCheckUpgradeCmd(),
+		newCountriesCmd(),
 		// Account
 		newGetidCmd(),
 		newRegisterCmd(),
@@ -117,18 +118,17 @@ func main() {
 
 func newEnsureReadyCmd() *cobra.Command {
 	var (
-		token         string
-		preferredNode string
-		mode          string
-		noRouting     bool
-		probeTarget   string
-		probeTimeout  time.Duration
+		country      string
+		mode         string
+		noRouting    bool
+		probeTarget  string
+		probeTimeout time.Duration
 	)
 	cmd := &cobra.Command{
 		Use:   "ensure-ready",
 		Short: "Install + configure + start + verify (the main entry point)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := buildRunner(token, preferredNode, mode)
+			r, err := buildRunner(country, mode)
 			if err != nil {
 				return err
 			}
@@ -140,8 +140,7 @@ func newEnsureReadyCmd() *cobra.Command {
 			return err
 		},
 	}
-	cmd.Flags().StringVar(&token, "token", "", "subscription URL (overrides profile + local store)")
-	cmd.Flags().StringVar(&preferredNode, "node", "", "preferred subscription-node name substring")
+	cmd.Flags().StringVar(&country, "country", "", "preferred egress country, ISO alpha-2 (e.g. HK, JP, US); list options with: feivpnctl countries")
 	cmd.Flags().StringVar(&mode, "mode", "", "routing mode (default: global)")
 	cmd.Flags().BoolVar(&noRouting, "no-routing", false,
 		"start daemon + router but do NOT hijack the system route table / DNS "+
@@ -173,7 +172,7 @@ func newStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Print current daemon and network state (read-only)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -189,7 +188,7 @@ func newStopCmd() *cobra.Command {
 		Use:   "stop",
 		Short: "Stop daemon and restore the original network configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -205,7 +204,7 @@ func newRestartCmd() *cobra.Command {
 		Use:   "restart",
 		Short: "Stop and re-run ensure-ready",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -216,12 +215,31 @@ func newRestartCmd() *cobra.Command {
 	}
 }
 
+func newCountriesCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "countries",
+		Short: "List ISO country codes available in your subscription",
+		Long: "Fetches the current subscription, classifies each node by detected\n" +
+			"egress country, and prints the ISO 3166-1 alpha-2 codes you can pass\n" +
+			"to `--country` (or pin under `preferred_country` in the profile).",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := buildRunner("", "")
+			if err != nil {
+				return err
+			}
+			result, err := r.Countries()
+			emit("countries", result)
+			return err
+		},
+	}
+}
+
 func newUpgradeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "upgrade",
 		Short: "Re-verify the pinned binaries and restart the daemon",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -243,7 +261,7 @@ func newCheckUpgradeCmd() *cobra.Command {
 			"anything. To act on a positive result, run `feivpnctl upgrade` (end\n" +
 			"user) or `make sync-bins && git commit` (maintainer).",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -266,7 +284,7 @@ func newRegisterCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -292,7 +310,7 @@ func newLoginCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -317,7 +335,7 @@ func newLogoutCmd() *cobra.Command {
 			"(auth_data, user_email) with the anonymous baseline. The same uuid\n" +
 			"and a fresh subscribe_url remain available for trial usage.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -339,7 +357,7 @@ func newGetidCmd() *cobra.Command {
 			"device. Other commands invoke this automatically when account.json\n" +
 			"does not yet exist.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -355,7 +373,7 @@ func newWhoamiCmd() *cobra.Command {
 		Use:   "whoami",
 		Short: "Show current account (refreshes from /user/info or /getid)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -376,7 +394,7 @@ func newChangePasswordCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -397,7 +415,7 @@ func newPlansCmd() *cobra.Command {
 		Use:   "plans",
 		Short: "List subscription plans (uses cached token if logged in)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -415,7 +433,7 @@ func newRechargeCmd() *cobra.Command {
 		Use:   "recharge",
 		Short: "Open the recharge URL with your token (web payment)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -436,7 +454,7 @@ func newTestCmd() *cobra.Command {
 		Use:   "test",
 		Short: "Egress IP, latency, DNS, and reachability checks",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := buildRunner("", "", "")
+			r, err := buildRunner("", "")
 			if err != nil {
 				return err
 			}
@@ -449,7 +467,7 @@ func newTestCmd() *cobra.Command {
 
 // ----- shared helpers -----
 
-func buildRunner(token, preferredNode, mode string) (*action.Runner, error) {
+func buildRunner(country, mode string) (*action.Runner, error) {
 	switch gf.logLevel {
 	case "debug":
 		logging.SetLevel(slog.LevelDebug)
@@ -465,11 +483,8 @@ func buildRunner(token, preferredNode, mode string) (*action.Runner, error) {
 	if err != nil {
 		return nil, fmt.Errorf("CONFIG_LOAD_FAILED: %w", err)
 	}
-	if token != "" {
-		prof.SubscriptionToken = token
-	}
-	if preferredNode != "" {
-		prof.PreferredNode = preferredNode
+	if country != "" {
+		prof.PreferredCountry = country
 	}
 	if mode != "" {
 		prof.Mode = mode
@@ -573,6 +588,28 @@ func summarize(act string, raw []byte) string {
 		}
 		if instr, ok := m["instruction"].(string); ok && instr != "" && needs {
 			headline += "\n  instruction: " + instr
+		}
+	}
+	if act == "countries" {
+		if buckets, ok := m["countries"].([]any); ok {
+			total, _ := m["total"].(float64)
+			classified, _ := m["classified"].(float64)
+			age, _ := m["age_seconds"].(float64)
+			source, _ := m["status"].(string)
+			headline += fmt.Sprintf("\n  total: %d nodes (%d classified, source=%s, age=%ds)", int(total), int(classified), source, int(age))
+			for _, b := range buckets {
+				bm, ok := b.(map[string]any)
+				if !ok {
+					continue
+				}
+				code, _ := bm["code"].(string)
+				name, _ := bm["display_name"].(string)
+				count, _ := bm["count"].(float64)
+				headline += fmt.Sprintf("\n  %s  %-10s  %d", code, name, int(count))
+			}
+			if unknown, ok := m["unknown"].([]any); ok && len(unknown) > 0 {
+				headline += fmt.Sprintf("\n  ??  unclassified  %d", len(unknown))
+			}
 		}
 	}
 	return headline

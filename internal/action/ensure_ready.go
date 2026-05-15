@@ -18,7 +18,6 @@ import (
 	"github.com/feivpn/feivpn-runtime/internal/router"
 	"github.com/feivpn/feivpn-runtime/internal/state"
 	"github.com/feivpn/feivpn-runtime/internal/store"
-	"github.com/feivpn/feivpn-runtime/internal/tz"
 )
 
 // linuxRouterTunName is the TUN device the C++ feivpn-router creates and
@@ -205,38 +204,43 @@ func (r *Runner) EnsureReady() (*EnsureReadyResult, error) {
 // renderDaemonConfig fetches the subscription via feiapi and writes a
 // daemon config.json that satisfies the daemon-args.schema.json contract.
 //
-// Refresh policy: if the profile does not pin a subscription URL we
-// always go through the local account store, refreshing it from the
-// server first so a stale subscribe_url never blocks ensure-ready. The
-// account is auto-bootstrapped via /getid on first run.
+// The subscribe_url is always sourced from the local account store —
+// auto-bootstrapped via /getid on first run, refreshed from the server
+// each time so a stale snapshot never blocks ensure-ready. Operators
+// no longer have a way to override this from a profile; if you need a
+// different identity, run `feivpnctl login` (or wipe the account file).
+//
+// Node fetching goes through r.refreshNodes(), which transparently
+// caches the subscription under /var/lib/feivpn/nodes.json. If the
+// network is down we still get a node list back (from cache) so
+// ensure-ready can keep operating; only a totally cold cache + network
+// failure surfaces a hard error here.
 //
 // In the MVP we generate a minimal Outline-compatible config block with
 // the selected SubscriptionNode. The chosen node is returned so callers
 // can extract its proxy host/IP for the router IPC handshake.
 func (r *Runner) renderDaemonConfig() (string, *feiapi.SubscriptionNode, error) {
-	subscribeURL := r.Profile.SubscriptionToken
-	if subscribeURL != "" {
-		logging.Info("ensure_ready: using subscribe_url from --token / profile override")
-	} else {
-		acc, err := r.refreshAccountForEnsureReady()
-		if err != nil {
-			return "", nil, err
-		}
-		subscribeURL = acc.SubscribeURL
-		if subscribeURL == "" {
-			return "", nil, fmt.Errorf("CONFIG_INCOMPLETE: server returned no subscribe_url — try `feivpnctl whoami` or pass --token <subscribe_url>")
-		}
-		logging.Info("ensure_ready: using subscribe_url from store", "uuid", acc.UUID, "logged_in", acc.IsLoggedIn())
+	acc, err := r.refreshAccountForEnsureReady()
+	if err != nil {
+		return "", nil, err
 	}
+	subscribeURL := acc.SubscribeURL
+	if subscribeURL == "" {
+		return "", nil, fmt.Errorf("CONFIG_INCOMPLETE: server returned no subscribe_url — try `feivpnctl whoami` or `feivpnctl login`")
+	}
+	logging.Info("ensure_ready: using subscribe_url from store", "uuid", acc.UUID, "logged_in", acc.IsLoggedIn())
 
-	zone := tz.IANA() // IANA name like "Asia/Shanghai"; the server
-	// rejects Go's time.Now().Zone() abbreviations
-	// ("CST", "PST", …) as a query value.
-	nodes, err := r.Feiapi.GetConfig(subscribeURL, zone)
+	view, err := r.refreshNodes(subscribeURL)
 	if err != nil {
 		return "", nil, fmt.Errorf("SUBSCRIPTION_FETCH_FAILED: %w", err)
 	}
-	node, err := r.Profile.SelectNode(nodes)
+	if view.Source == "stale" {
+		logging.Warn("ensure_ready: using cached node list (subscription fetch failed)",
+			"cached_age", time.Since(view.FetchedAt).Round(time.Second).String(),
+			"nodes", len(view.Nodes),
+		)
+	}
+	node, err := r.Profile.SelectNode(view.Nodes)
 	if err != nil {
 		return "", nil, err
 	}

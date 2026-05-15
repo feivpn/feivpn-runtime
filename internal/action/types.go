@@ -255,3 +255,38 @@ type ReachProbe struct {
 	Status int    `json:"status,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
+
+// CountriesResult is the contract for `feivpnctl countries`.
+//
+// We always include the full subscription node count so an operator can
+// see how many nodes are unclassified (Total - sum(.Countries[].Count)).
+//
+// Freshness fields:
+//   - Status        — "live" if the underlying call hit the API just now,
+//                     "stale" if we had to fall back to the on-disk
+//                     cache because the API was unreachable.
+//   - FetchedAt     — when the cache file backing this answer was last
+//                     written (live: now; stale: last successful fetch).
+//   - LastChangedAt — when the underlying node set actually changed
+//                     content. Same as FetchedAt on first fetch; for
+//                     subsequent identical responses it stays put.
+//   - AgeSeconds    — convenience derivative of FetchedAt for humans /
+//                     agents that don't want to do timestamp math.
+type CountriesResult struct {
+	Status        string          `json:"status"` // "live" | "stale"
+	Total         int             `json:"total"`
+	Classified    int             `json:"classified"`
+	Countries     []CountryBucket `json:"countries"`
+	Unknown       []string        `json:"unknown,omitempty"` // node names we couldn't classify
+	FetchedAt     time.Time       `json:"fetched_at"`
+	LastChangedAt time.Time       `json:"last_changed_at"`
+	AgeSeconds    int64           `json:"age_seconds"`
+}
+
+// CountryBucket groups subscription nodes by detected ISO country code.
+type CountryBucket struct {
+	Code        string   `json:"code"`         // ISO alpha-2, e.g. "HK"
+	DisplayName string   `json:"display_name"` // localised, e.g. "香港"
+	Count       int      `json:"count"`
+	Sample      []string `json:"sample,omitempty"` // up to 3 example node names
+}
