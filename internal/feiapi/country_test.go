@@ -7,42 +7,21 @@ func TestDetectCountry(t *testing.T) {
 		in   string
 		want string
 	}{
-		// emoji flag wins over everything else
-		{"🇭🇰 香港 02", "HK"},
-		{"🇯🇵 Tokyo Premium", "JP"},
-		{"🇺🇸 LA-1", "US"},
+		// Valid TS format
+		{"香港 HK - 01", "HK"},
+		{"香港备用 HK - 02", "HK"},
+		{"韩国 KOR - 04", "KOR"},
+		{"United States US - 03", "US"},
+		{"英国 GB - 03", "GB"},
 
-		// bare ISO code, with various separators
-		{"[HK] 02", "HK"},
-		{"JP-01", "JP"},
-		{"NODE_US_03", "US"},
-		{"sg.premium", "SG"},
-
-		// Chinese tokens
-		{"香港 02 中转", "HK"},
-		{"日本东京 03", "JP"},
-		{"美国洛杉矶 高级", "US"},
-		{"新加坡 BGP", "SG"},
-		{"台湾 IEPL", "TW"},
-		{"澳洲悉尼", "AU"},
-		{"阿联酋迪拜", "AE"},
-		{"南非约翰内斯堡", "ZA"},
-
-		// English tokens
-		{"Hong Kong 02", "HK"},
-		{"Tokyo Premium", "JP"},
-		{"Los Angeles BGP", "US"},
-		{"New York 1", "US"},
-		{"Frankfurt DE", "DE"},
-		{"London UK", "GB"},
-
-		// nothing recognisable
+		// Invalid names should not be classified
+		{"🇭🇰 香港 02", ""},
+		{"JP-01", ""},
+		{"Tokyo Premium", ""},
 		{"VIP 01", ""},
 		{"", ""},
 		{"???", ""},
-
-		// must NOT misclassify USA → "SA" via substring
-		{"USA Premium", "US"},
+		{"剩余流量：130.15 GB", ""},
 	}
 
 	for _, c := range cases {
@@ -54,15 +33,34 @@ func TestDetectCountry(t *testing.T) {
 }
 
 func TestIsKnownCountry(t *testing.T) {
-	for _, cc := range []string{"HK", "hk", " jp ", "US"} {
+	for _, cc := range []string{"HK", "hk", " jp ", "US", "KOR"} {
 		if !IsKnownCountry(cc) {
 			t.Errorf("IsKnownCountry(%q) = false, want true", cc)
 		}
 	}
-	for _, cc := range []string{"", "X", "ZZZ", "foo"} {
+	for _, cc := range []string{"", "X", "ZZZZ", "H1"} {
 		if IsKnownCountry(cc) {
 			t.Errorf("IsKnownCountry(%q) = true, want false", cc)
 		}
+	}
+}
+
+func TestParseServerNameAndBackup(t *testing.T) {
+	p, ok := ParseServerName("香港备用 HK - 02")
+	if !ok {
+		t.Fatalf("ParseServerName failed")
+	}
+	if p.Country != "香港备用" || p.Code != "HK" || p.Number != "02" {
+		t.Fatalf("unexpected parse: %+v", p)
+	}
+	if !IsBackupServerName("香港备用 HK - 02") {
+		t.Fatalf("expected backup node")
+	}
+	if IsBackupServerName("香港 HK - 02") {
+		t.Fatalf("non-backup node misdetected")
+	}
+	if DisplayCountryName("香港备用") != "香港" {
+		t.Fatalf("DisplayCountryName should strip 备用")
 	}
 }
 

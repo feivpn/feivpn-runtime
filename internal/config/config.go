@@ -28,10 +28,11 @@ type Profile struct {
 	// the MVP; "rule-based" / "tun-only" are reserved.
 	Mode string `json:"mode" yaml:"mode"`
 
-	// PreferredCountry pins the egress country as an ISO 3166-1
-	// alpha-2 code (e.g. "HK", "JP", "US"). Use `feivpnctl countries`
-	// to list the codes available in your subscription. Empty value
-	// means "let the server's default ordering decide".
+	// PreferredCountry pins the egress country code parsed from node names
+	// (TS naming contract: 2-3 uppercase letters, e.g. "HK", "US", "KOR").
+	// Use `feivpnctl countries` to list the codes available in your
+	// subscription. Empty value means "let the server's default ordering
+	// decide".
 	PreferredCountry string `json:"preferred_country,omitempty" yaml:"preferred_country,omitempty"`
 
 	// TunName, TunAddr override defaults (utunN on darwin, fei0 on linux).
@@ -96,9 +97,11 @@ func Save(path string, p *Profile) error {
 //   - PreferredCountry empty → the first node returned by the
 //     subscription (server-defined order is the de-facto recommendation).
 //   - PreferredCountry set → the first node whose detected country
-//     matches. If no node matches, returns NO_NODES_IN_COUNTRY rather
-//     than silently falling back, so the operator notices that their
-//     pinned country is not actually available.
+//     matches, with TS parity ordering: primary nodes first, then backup
+//     nodes (names containing "备用"). If no node matches, returns
+//     NO_NODES_IN_COUNTRY rather than silently falling back, so the
+//     operator notices that their pinned country is not actually
+//     available.
 //
 // PreferredCountry is normalised case-insensitively against ISO alpha-2.
 // Unknown codes are rejected up front by the CLI; the daemon-side check
@@ -114,10 +117,23 @@ func (p *Profile) SelectNode(nodes []feiapi.SubscriptionNode) (*feiapi.Subscript
 	if !feiapi.IsKnownCountry(want) {
 		return nil, fmt.Errorf("INVALID_COUNTRY: %q is not a recognised ISO code; run `feivpnctl countries` to list available options", p.PreferredCountry)
 	}
+	var primary []*feiapi.SubscriptionNode
+	var backup []*feiapi.SubscriptionNode
 	for i := range nodes {
-		if feiapi.DetectCountry(nodes[i].Name) == want {
-			return &nodes[i], nil
+		if feiapi.DetectCountry(nodes[i].Name) != want {
+			continue
 		}
+		if feiapi.IsBackupServerName(nodes[i].Name) {
+			backup = append(backup, &nodes[i])
+		} else {
+			primary = append(primary, &nodes[i])
+		}
+	}
+	if len(primary) > 0 {
+		return primary[0], nil
+	}
+	if len(backup) > 0 {
+		return backup[0], nil
 	}
 	return nil, fmt.Errorf("NO_NODES_IN_COUNTRY: subscription has no node tagged %s (%s); run `feivpnctl countries` to see what's available", want, feiapi.CountryDisplayName(want))
 }

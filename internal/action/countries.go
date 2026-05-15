@@ -41,16 +41,17 @@ func (r *Runner) Countries() (*CountriesResult, error) {
 	buckets := map[string]*CountryBucket{}
 	var unknown []string
 	for _, n := range view.Nodes {
-		cc := feiapi.DetectCountry(n.Name)
-		if cc == "" {
+		parsed, ok := feiapi.ParseServerName(n.Name)
+		if !ok {
 			unknown = append(unknown, n.Name)
 			continue
 		}
+		cc := parsed.Code
 		b, ok := buckets[cc]
 		if !ok {
 			b = &CountryBucket{
 				Code:        cc,
-				DisplayName: feiapi.CountryDisplayName(cc),
+				DisplayName: feiapi.DisplayCountryName(parsed.Country),
 			}
 			buckets[cc] = b
 		}
