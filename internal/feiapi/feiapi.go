@@ -16,6 +16,7 @@
 package feiapi
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -444,8 +445,7 @@ func parseAccessKey(n *SubscriptionNode) {
 	}
 	n.Protocol = scheme
 	if scheme == "vmess" {
-		// vmess body is base64-encoded JSON; leave structured parse to
-		// the daemon. We still surface the protocol tag for diagnostics.
+		parseVmessAccessKey(n, ak)
 		return
 	}
 
@@ -465,4 +465,55 @@ func parseAccessKey(n *SubscriptionNode) {
 			n.Token = pw
 		}
 	}
+}
+
+// parseVmessAccessKey populates Server/Port/Token (the user UUID) from
+// the standard base64-encoded JSON body that follows `vmess://`. The
+// fragment (`#name`) is stripped first because some subscription
+// providers append it even though the canonical vmess URI uses the
+// JSON `ps` field for the display name.
+//
+// Without this, ensure_ready's resolveProxyIP returns
+// PROXY_IP_RESOLVE_FAILED for any vmess node, which prevents the C++
+// router from installing the `<server>/32 via <gw>` bypass and leaves
+// the daemon-to-server TCP socket subject to the same PBR loop the
+// router exists to break.
+func parseVmessAccessKey(n *SubscriptionNode, ak string) {
+	body := strings.TrimPrefix(ak, "vmess://")
+	if i := strings.Index(body, "#"); i >= 0 {
+		body = body[:i]
+	}
+	raw, err := decodeBase64StdOrRaw(body)
+	if err != nil {
+		return
+	}
+	// Field types differ across vmess generators: `port` is sometimes a
+	// JSON string ("443") and sometimes a number (443). json.Number
+	// accepts both; we then try Int conversion.
+	var cfg struct {
+		Add  string      `json:"add"`
+		Port json.Number `json:"port"`
+		ID   string      `json:"id"`
+	}
+	dec := json.NewDecoder(strings.NewReader(string(raw)))
+	dec.UseNumber()
+	if err := dec.Decode(&cfg); err != nil {
+		return
+	}
+	n.Server = strings.TrimSpace(cfg.Add)
+	if cfg.Port != "" {
+		if p, err := strconv.Atoi(cfg.Port.String()); err == nil {
+			n.Port = p
+		}
+	}
+	if cfg.ID != "" {
+		n.Token = cfg.ID
+	}
+}
+
+func decodeBase64StdOrRaw(s string) ([]byte, error) {
+	if b, err := base64.StdEncoding.DecodeString(s); err == nil {
+		return b, nil
+	}
+	return base64.RawStdEncoding.DecodeString(s)
 }
