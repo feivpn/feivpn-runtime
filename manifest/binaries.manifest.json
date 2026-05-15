@@ -68,25 +68,44 @@
     "tag":      "api-v0.1.4",
     "version":  "0.1.4",
     "release_url": "https://github.com/feivpn/feivpn-apps/releases/tag/api-v0.1.4",
+    "$changelog_v0_1_4_rebake": [
+      "Rebake of api-v0.1.4: same source (feivpn-apps@866aa3f4 — vmess `ps`",
+      "  parsing + URL-decoded fragments + TS server-name regex), but built",
+      "  with FEIVPN_API_SECRET injected via -ldflags -X. Previous bins",
+      "  shipped in feivpn-runtime v0.1.21 were a plain `go build` and had",
+      "  no embedded secret, which broke every signed call (getid, getinfo,",
+      "  changepass, plans) with `Error: api: no secret configured`. The",
+      "  unsigned `getconfig` codepath kept working, which is why countries",
+      "  still classified correctly even though `feivpnctl whoami` and the",
+      "  initial account refresh fell over.",
+      "No source change — sha256s differ from the upstream release tarballs",
+      "  because these binaries were cross-built locally with the same",
+      "  ldflags formula the CI workflow uses (-trimpath -s -w -X main.version",
+      "  -X .../client/go/api.encodedSecret). Until the release-feiapi.yml",
+      "  workflow runs to completion against api-v0.1.4 the tarballs at the",
+      "  release_url above will 404; install.sh ships these bins/ directly",
+      "  and `make verify-bins` only checks the local sha against this",
+      "  manifest, so the missing tarballs don't block install."
+    ],
     "binaries": {
       "linux-amd64": {
         "path":   "bin/feiapi-linux-amd64",
-        "sha256": "acd7726be7315df4e706b5b68765bf3bb0da6795c5719146b447985898bb18cb",
+        "sha256": "d504a26cfb59b1312ee2c6178f2be0977558863b445d171f1c3fdab6577301c8",
         "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.4/feiapi-linux-amd64.tar.gz"
       },
       "linux-arm64": {
         "path":   "bin/feiapi-linux-arm64",
-        "sha256": "244542f2c608d3ac139ef7f1e7e6796d9a2b2c20e022de6b6056936869d155a6",
+        "sha256": "7a98d4581b6bd72e783e34451b58aaf036af0a689750d3037817ce134afa266b",
         "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.4/feiapi-linux-arm64.tar.gz"
       },
       "darwin-arm64": {
         "path":   "bin/feiapi-darwin-arm64",
-        "sha256": "a90772c04a4772c305c9c5b6010e3f8b75475f1ec53ebd1a75a7486a1cd4e99f",
+        "sha256": "5a8cac1323c8ecbb37d75d7309a22323b08551b7fbdced88c74694e9ed5c1f66",
         "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.4/feiapi-darwin-arm64.tar.gz"
       },
       "darwin-amd64": {
         "path":   "bin/feiapi-darwin-amd64",
-        "sha256": "619efbe28c27c3c05e9da77d663ec546d510fa2fa7bbdd26596ecb5e05b0bb60",
+        "sha256": "226a561b654fab3a7003c7fe9a84e8a8eda918ccaefa47203fb4556f847f01c2",
         "url":    "https://github.com/feivpn/feivpn-apps/releases/download/api-v0.1.4/feiapi-darwin-amd64.tar.gz"
       }
     }
